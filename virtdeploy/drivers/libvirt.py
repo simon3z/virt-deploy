@@ -115,13 +115,21 @@ def template_list():
             for x in templates['templates']]
 
 
+def _libvirt_open(uri=None):
+    def libvirt_callback(ctx, err):
+        pass  # add logging only when required
+
+    libvirt.registerErrorHandler(libvirt_callback, ctx=None)
+    return libvirt.open(uri)
+
+
 def instance_create(vmid, template, uri='', **kwargs):
     kwargs = dict(INSTANCE_DEFAULTS.items() + kwargs.items())
 
     name = '{0}-{1}-{2}'.format(vmid, template, kwargs['arch'])
     image = '{0}.qcow2'.format(name)
 
-    conn = libvirt.open(uri)
+    conn = _libvirt_open(uri)
     pool = conn.storagePoolLookupByName(kwargs['pool'])
     net = conn.networkLookupByName(kwargs['network'])
 
@@ -190,7 +198,7 @@ def instance_create(vmid, template, uri='', **kwargs):
 
 
 def instance_delete(name, uri=''):
-    conn = libvirt.open(uri)
+    conn = _libvirt_open(uri)
 
     try:
         dom = conn.lookupByName(name)
@@ -326,7 +334,7 @@ def _new_network_ipaddress(net):
 
 
 def instance_address(name, uri='', network=DEFAULT_NET):
-    conn = libvirt.open(uri)
+    conn = _libvirt_open(uri)
 
     hosts = _get_network_dhcp_leases(conn.networkLookupByName(network))
     addresses = dict((x['mac'], x['ip']) for x in hosts)
