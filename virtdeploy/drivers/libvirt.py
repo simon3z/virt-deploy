@@ -161,8 +161,17 @@ def instance_create(vmid, template, uri='', **kwargs):
              '--hostname', fqdn,
              '--root-password', 'password:{0}'.format(kwargs['password'])))
 
+    network = 'network={0}'.format(kwargs['network'])
+
+    try:
+        conn.nwfilterLookupByName('clean-traffic')
+    except libvirt.libvirtError as e:
+        if e.get_error_code() != libvirt.VIR_ERR_NO_NWFILTER:
+            raise
+    else:
+        network += ',filterref=clean-traffic'
+
     disk = 'path={0},format=qcow2,bus=scsi,discard=unmap'.format(path)
-    network = 'network={0},filterref=clean-traffic'.format(kwargs['network'])
     channel = 'unix,name=org.qemu.guest_agent.0'
 
     execute(('virt-install',
