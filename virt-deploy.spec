@@ -1,7 +1,7 @@
 %{!?python_sitelib: %global python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
 
 Name:           virt-deploy
-Version:        0.1.3
+Version:        0.1.4
 Release:        1%{?dist}
 Summary:        Virtual machines deployment tool
 
@@ -46,6 +46,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Sat Jan 17 2015 Federico Simoncelli <fsimonce@redhat.com> - 0.1.4-1
+- update to 0.1.4
+
 * Thu Jan 15 2015 Federico Simoncelli <fsimonce@redhat.com> - 0.1.3-1
 - update to 0.1.3
 

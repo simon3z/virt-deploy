@@ -24,7 +24,7 @@ from setuptools import setup
 
 setup(
     name="virtdeploy",
-    version="0.1.3",
+    version="0.1.4",
     packages=find_packages(),
     entry_points={
         'console_scripts': [
