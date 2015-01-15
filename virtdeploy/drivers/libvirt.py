@@ -216,6 +216,12 @@ def instance_delete(name, uri=''):
             raise
         return  ## nothing to do from here down
 
+    try:
+        dom.destroy()
+    except libvirt.libvirtError as e:
+        if e.get_error_code() != libvirt.VIR_ERR_OPERATION_INVALID:
+            raise
+
     xmldesc = libxml2.parseDoc(dom.XMLDesc())
 
     for disk in xmldesc.xpathEval('/domain/devices/disk/source'):
