@@ -34,6 +34,10 @@ def instance_create(args):
     print('ip address: {0}'.format(instance['ipaddress']))
 
 
+def instance_start(args):
+    return virtdeploy.instance_start(args.name)
+
+
 def instance_delete(args):
     return virtdeploy.instance_delete(args.name)
 
@@ -49,6 +53,7 @@ def instance_address(args):
 
 COMMAND_TABLE = {
     'create': instance_create,
+    'start': instance_start,
     'delete': instance_delete,
     'templates': template_list,
     'address': instance_address,
@@ -62,6 +67,9 @@ def main():
     cmd_create = cmd.add_parser('create', help='create a new instance')
     cmd_create.add_argument('id', help='new instance id')
     cmd_create.add_argument('template', help='template id')
+
+    cmd_start = cmd.add_parser('start', help='start an instance')
+    cmd_start.add_argument('name', help='name of instance to start')
 
     cmd_delete = cmd.add_parser('delete', help='delete an instance')
     cmd_delete.add_argument('name', help='name of instance to delete')

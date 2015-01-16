@@ -197,6 +197,23 @@ def instance_create(vmid, template, uri='', **kwargs):
     }
 
 
+def instance_start(name, uri=''):
+    conn = _libvirt_open(uri)
+
+    try:
+        dom = conn.lookupByName(name)
+    except libvirt.libvirtError as e:
+        if e.get_error_code() == libvirt.VIR_ERR_NO_DOMAIN:
+            raise InstanceNotFound(name)
+        raise
+
+    try:
+        dom.create()
+    except libvirt.libvirtError as e:
+        if e.get_error_code() != libvirt.VIR_ERR_OPERATION_INVALID:
+            raise
+
+
 def instance_delete(name, uri=''):
     conn = _libvirt_open(uri)
 
