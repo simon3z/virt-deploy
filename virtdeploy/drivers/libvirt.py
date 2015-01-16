@@ -30,6 +30,7 @@ import subprocess
 
 from ..utils import execute
 from ..utils import random_password
+from ..errors import InstanceNotFound
 
 DEFAULT_NET = 'default'
 DEFAULT_POOL = 'default'
@@ -202,9 +203,9 @@ def instance_delete(name, uri=''):
     try:
         dom = conn.lookupByName(name)
     except libvirt.libvirtError as e:
-        if e.get_error_code() != libvirt.VIR_ERR_NO_DOMAIN:
-            raise
-        return  # nothing to do from here down
+        if e.get_error_code() == libvirt.VIR_ERR_NO_DOMAIN:
+            raise InstanceNotFound(name)
+        raise
 
     try:
         dom.destroy()
@@ -344,7 +345,13 @@ def instance_address(name, uri='', network=DEFAULT_NET):
     hosts = _get_network_dhcp_leases(conn.networkLookupByName(network))
     addresses = dict((x['mac'], x['ip']) for x in hosts)
 
-    macs = _get_domain_mac_addresses(conn.lookupByName(name))
+    try:
+        macs = _get_domain_mac_addresses(conn.lookupByName(name))
+    except libvirt.libvirtError as e:
+        if e.get_error_code() == libvirt.VIR_ERR_NO_DOMAIN:
+            raise InstanceNotFound(name)
+        raise
+
     netmacs = filter(lambda x: x['network'] == network, macs)
 
     return filter(None, (addresses.get(x['mac']) for x in netmacs))

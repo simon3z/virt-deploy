@@ -73,4 +73,8 @@ def main():
 
     args = parser.parse_args()
 
-    return COMMAND_TABLE[args.command](args)
+    try:
+        return COMMAND_TABLE[args.command](args)
+    except virtdeploy.errors.VirtDeployException as e:
+        print('error: {0}'.format(e))
+        return 1
