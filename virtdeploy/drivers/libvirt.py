@@ -181,7 +181,7 @@ def instance_create(vmid, template, uri='', **kwargs):
              '--noautoconsole',
              '--noreboot'))
 
-    netmac = _get_domain_mac_addresses(conn.lookupByName(name)).next()
+    netmac = _get_domain_mac_addresses(_get_domain(conn, name)).next()
     ipaddress = _new_network_ipaddress(net)
 
     # TODO: fix race between _new_network_ipaddress and ip reservation
@@ -197,15 +197,17 @@ def instance_create(vmid, template, uri='', **kwargs):
     }
 
 
-def instance_start(name, uri=''):
-    conn = _libvirt_open(uri)
-
+def _get_domain(conn, name):
     try:
-        dom = conn.lookupByName(name)
+        return conn.lookupByName(name)
     except libvirt.libvirtError as e:
         if e.get_error_code() == libvirt.VIR_ERR_NO_DOMAIN:
             raise InstanceNotFound(name)
         raise
+
+
+def instance_start(name, uri=''):
+    dom = _get_domain(_libvirt_open(uri), name)
 
     try:
         dom.create()
@@ -214,15 +216,22 @@ def instance_start(name, uri=''):
             raise
 
 
-def instance_delete(name, uri=''):
-    conn = _libvirt_open(uri)
+def instance_stop(name, uri=''):
+    dom = _get_domain(_libvirt_open(uri), name)
 
     try:
-        dom = conn.lookupByName(name)
+        dom.shutdownFlags(
+            libvirt.VIR_DOMAIN_SHUTDOWN_GUEST_AGENT |
+            libvirt.VIR_DOMAIN_SHUTDOWN_ACPI_POWER_BTN
+        )
     except libvirt.libvirtError as e:
-        if e.get_error_code() == libvirt.VIR_ERR_NO_DOMAIN:
-            raise InstanceNotFound(name)
-        raise
+        if e.get_error_code() != libvirt.VIR_ERR_OPERATION_INVALID:
+            raise
+
+
+def instance_delete(name, uri=''):
+    conn = _libvirt_open(uri)
+    dom = _get_domain(conn, name)
 
     try:
         dom.destroy()
@@ -362,13 +371,7 @@ def instance_address(name, uri='', network=DEFAULT_NET):
     hosts = _get_network_dhcp_leases(conn.networkLookupByName(network))
     addresses = dict((x['mac'], x['ip']) for x in hosts)
 
-    try:
-        macs = _get_domain_mac_addresses(conn.lookupByName(name))
-    except libvirt.libvirtError as e:
-        if e.get_error_code() == libvirt.VIR_ERR_NO_DOMAIN:
-            raise InstanceNotFound(name)
-        raise
-
+    macs = _get_domain_mac_addresses(_get_domain(conn, name))
     netmacs = filter(lambda x: x['network'] == network, macs)
 
     return filter(None, (addresses.get(x['mac']) for x in netmacs))
