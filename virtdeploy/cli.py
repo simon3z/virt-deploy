@@ -63,7 +63,7 @@ def main():
     cmd_create.add_argument('id', help='new instance id')
     cmd_create.add_argument('template', help='template id')
 
-    cmd_delete = cmd.add_parser('delete', help='create a new instance')
+    cmd_delete = cmd.add_parser('delete', help='delete an instance')
     cmd_delete.add_argument('name', help='name of instance to delete')
 
     cmd.add_parser('templates', help='list all the templates')
