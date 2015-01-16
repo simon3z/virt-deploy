@@ -28,7 +28,8 @@ import os
 import os.path
 import subprocess
 
-import virtdeploy
+from ..utils import execute
+from ..utils import random_password
 
 DEFAULT_NET = 'default'
 DEFAULT_POOL = 'default'
@@ -88,17 +89,6 @@ def _create_base(template, arch, repository):
     return name
 
 
-def execute(args, stdout=None, stderr=None, cwd=None):
-    p = subprocess.Popen(args, stdout=stdout, stderr=stderr, cwd=cwd)
-
-    out, err = p.communicate()
-
-    if p.returncode != 0:
-        subprocess.CalledProcessError(p.returncode, args)
-
-    return out, err
-
-
 def _get_virt_templates():
     stdout, _ = execute(('virt-builder', '-l', '--list-format', 'json'),
                         stdout=subprocess.PIPE)
@@ -154,7 +144,7 @@ def instance_create(vmid, template, uri='', **kwargs):
         fqdn = '{0}.{1}'.format(hostname, domainname)
 
     if kwargs['password'] is None:
-        kwargs['password'] = virtdeploy.random_password()
+        kwargs['password'] = random_password()
 
     execute(('virt-customize',
              '-a', path,

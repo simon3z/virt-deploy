@@ -20,11 +20,24 @@
 
 from __future__ import absolute_import
 
+import random
+import string
+import subprocess
 
-# TODO: driver dynamic loading
-from .drivers import libvirt as driver
+_PASSWORD_CHARS = string.letters + string.digits + '!#$%&'
 
-instance_create = driver.instance_create
-instance_delete = driver.instance_delete
-template_list = driver.template_list
-instance_address = driver.instance_address
+
+def execute(args, stdout=None, stderr=None, cwd=None):
+    p = subprocess.Popen(args, stdout=stdout, stderr=stderr, cwd=cwd)
+
+    out, err = p.communicate()
+
+    if p.returncode != 0:
+        subprocess.CalledProcessError(p.returncode, args)
+
+    return out, err
+
+
+def random_password(size=12):
+    chars = (random.choice(_PASSWORD_CHARS) for _ in xrange(size))
+    return ''.join(chars)
