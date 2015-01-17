@@ -40,7 +40,7 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %files
-%doc COPYING
+%doc README.md COPYING
 %{_bindir}/virt-deploy
 %{python_sitelib}/*
 
