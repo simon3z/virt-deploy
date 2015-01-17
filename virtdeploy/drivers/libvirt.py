@@ -29,9 +29,10 @@ import subprocess
 
 from lxml import etree
 
+from ..driverbase import VirtDeployDriverBase
+from ..errors import InstanceNotFound
 from ..utils import execute
 from ..utils import random_password
-from ..errors import InstanceNotFound
 
 DEFAULT_NET = 'default'
 DEFAULT_POOL = 'default'
@@ -62,6 +63,178 @@ _IMAGE_OS_TABLE = {
     'centos-6': 'centos6.5',  # TODO: fix versions
     'centos-7.0': 'centos7.0',
 }
+
+
+class VirtDeployLibvirtDriver(VirtDeployDriverBase):
+    def __init__(self, uri='qemu:///system'):
+        self.uri = uri
+
+    def template_list(self):
+        templates = _get_virt_templates()
+
+        if templates['version'] != 1:
+            raise RuntimeError('Unsupported template list version')
+
+        return [{'id': x['os-version'], 'name': x['full-name']}
+                for x in templates['templates']]
+
+    def instance_create(self, vmid, template, **kwargs):
+        kwargs = dict(INSTANCE_DEFAULTS.items() + kwargs.items())
+
+        name = '{0}-{1}-{2}'.format(vmid, template, kwargs['arch'])
+        image = '{0}.qcow2'.format(name)
+
+        conn = _libvirt_open(self.uri)
+        pool = conn.storagePoolLookupByName(kwargs['pool'])
+        net = conn.networkLookupByName(kwargs['network'])
+
+        repository = _get_pool_path(pool)
+        path = os.path.join(repository, image)
+
+        if os.path.exists(path):
+            raise OSError(os.errno.EEXIST, "Image already exists")
+
+        base = _create_base(template, kwargs['arch'], repository)
+
+        execute(('qemu-img', 'create', '-f', 'qcow2', '-b', base, image),
+                cwd=repository)
+
+        hostname = 'vm-{0}'.format(vmid)
+
+        domainname = _get_network_domainname(net)
+
+        if domainname is None:
+            fqdn = hostname
+        else:
+            fqdn = '{0}.{1}'.format(hostname, domainname)
+
+        if kwargs['password'] is None:
+            kwargs['password'] = random_password()
+
+        password_string = 'password:{0}'.format(kwargs['password'])
+
+        execute(('virt-customize',
+                 '-a', path,
+                 '--hostname', fqdn,
+                 '--root-password', password_string))
+
+        network = 'network={0}'.format(kwargs['network'])
+
+        try:
+            conn.nwfilterLookupByName('clean-traffic')
+        except libvirt.libvirtError as e:
+            if e.get_error_code() != libvirt.VIR_ERR_NO_NWFILTER:
+                raise
+        else:
+            network += ',filterref=clean-traffic'
+
+        disk = 'path={0},format=qcow2,bus=scsi,discard=unmap'.format(path)
+        channel = 'unix,name=org.qemu.guest_agent.0'
+
+        execute(('virt-install',
+                 '--quiet',
+                 '--connect={0}'.format(self.uri),
+                 '--name', name,
+                 '--cpu', 'host-model-only,+vmx',
+                 '--vcpus', str(kwargs['cpus']),
+                 '--memory', str(kwargs['memory']),
+                 '--controller', 'scsi,model=virtio-scsi',
+                 '--disk', disk,
+                 '--network', network,
+                 '--graphics', 'spice',
+                 '--channel', channel,
+                 '--os-variant', _get_image_os(template),
+                 '--import',
+                 '--noautoconsole',
+                 '--noreboot'))
+
+        netmac = _get_domain_mac_addresses(_get_domain(conn, name)).next()
+        ipaddress = _new_network_ipaddress(net)
+
+        # TODO: fix race between _new_network_ipaddress and ip reservation
+        _add_network_host(net, hostname, ipaddress)
+        _add_network_dhcp_host(net, hostname, netmac['mac'], ipaddress)
+
+        return {
+            'name': name,
+            'password': kwargs['password'],
+            'mac': netmac['mac'],
+            'hostname': fqdn,
+            'ipaddress': ipaddress,
+        }
+
+    def instance_address(self, vmid, network=None):
+        conn = _libvirt_open(self.uri)
+
+        if network is None:
+            network = DEFAULT_NET
+
+        hosts = _get_network_dhcp_leases(conn.networkLookupByName(network))
+        addresses = dict((x['mac'], x['ip']) for x in hosts)
+
+        macs = _get_domain_mac_addresses(_get_domain(conn, vmid))
+        netmacs = filter(lambda x: x['network'] == network, macs)
+
+        return filter(None, (addresses.get(x['mac']) for x in netmacs))
+
+    def instance_start(self, vmid):
+        dom = _get_domain(_libvirt_open(self.uri), vmid)
+
+        try:
+            dom.create()
+        except libvirt.libvirtError as e:
+            if e.get_error_code() != libvirt.VIR_ERR_OPERATION_INVALID:
+                raise
+
+    def instance_stop(self, vmid):
+        dom = _get_domain(_libvirt_open(self.uri), vmid)
+
+        try:
+            dom.shutdownFlags(
+                libvirt.VIR_DOMAIN_SHUTDOWN_GUEST_AGENT |
+                libvirt.VIR_DOMAIN_SHUTDOWN_ACPI_POWER_BTN
+            )
+        except libvirt.libvirtError as e:
+            if e.get_error_code() != libvirt.VIR_ERR_OPERATION_INVALID:
+                raise
+
+    def instance_delete(self, vmid):
+        conn = _libvirt_open(self.uri)
+        dom = _get_domain(conn, vmid)
+
+        try:
+            dom.destroy()
+        except libvirt.libvirtError as e:
+            if e.get_error_code() != libvirt.VIR_ERR_OPERATION_INVALID:
+                raise
+
+        xmldesc = etree.fromstring(dom.XMLDesc())
+
+        for disk in xmldesc.iterfind('./devices/disk/source'):
+            os.remove(disk.get('file'))
+
+        netmacs = {}
+
+        for x in _get_domain_mac_addresses(dom):
+            netmacs.setdefault(x['network'], []).append(x['mac'])
+
+        for network, macs in netmacs.iteritems():
+            net = conn.networkLookupByName(network)
+
+            for x in _get_network_dhcp_hosts(net):
+                if x['mac'] in macs:
+                    _del_network_host(net, x['ip'])
+                    _del_network_dhcp_host(net, x['ip'])
+
+        dom.undefine()
+
+
+def _libvirt_open(uri=None):
+    def libvirt_callback(ctx, err):
+        pass  # add logging only when required
+
+    libvirt.registerErrorHandler(libvirt_callback, ctx=None)
+    return libvirt.open(uri)
 
 
 def _get_image_os(image):
@@ -97,108 +270,6 @@ def _get_virt_templates():
     return json.loads(stdout)
 
 
-def template_list():
-    templates = _get_virt_templates()
-
-    if templates['version'] != 1:
-        raise RuntimeError('Unsupported template list version')
-
-    return [{'id': x['os-version'], 'name': x['full-name']}
-            for x in templates['templates']]
-
-
-def _libvirt_open(uri=None):
-    def libvirt_callback(ctx, err):
-        pass  # add logging only when required
-
-    libvirt.registerErrorHandler(libvirt_callback, ctx=None)
-    return libvirt.open(uri)
-
-
-def instance_create(vmid, template, uri='', **kwargs):
-    kwargs = dict(INSTANCE_DEFAULTS.items() + kwargs.items())
-
-    name = '{0}-{1}-{2}'.format(vmid, template, kwargs['arch'])
-    image = '{0}.qcow2'.format(name)
-
-    conn = _libvirt_open(uri)
-    pool = conn.storagePoolLookupByName(kwargs['pool'])
-    net = conn.networkLookupByName(kwargs['network'])
-
-    repository = _get_pool_path(pool)
-    path = os.path.join(repository, image)
-
-    if os.path.exists(path):
-        raise OSError(os.errno.EEXIST, "Image already exists")
-
-    base = _create_base(template, kwargs['arch'], repository)
-
-    execute(('qemu-img', 'create', '-f', 'qcow2', '-b', base, image),
-            cwd=repository)
-
-    hostname = 'vm-{0}'.format(vmid)
-
-    domainname = _get_network_domainname(net)
-
-    if domainname is None:
-        fqdn = hostname
-    else:
-        fqdn = '{0}.{1}'.format(hostname, domainname)
-
-    if kwargs['password'] is None:
-        kwargs['password'] = random_password()
-
-    execute(('virt-customize',
-             '-a', path,
-             '--hostname', fqdn,
-             '--root-password', 'password:{0}'.format(kwargs['password'])))
-
-    network = 'network={0}'.format(kwargs['network'])
-
-    try:
-        conn.nwfilterLookupByName('clean-traffic')
-    except libvirt.libvirtError as e:
-        if e.get_error_code() != libvirt.VIR_ERR_NO_NWFILTER:
-            raise
-    else:
-        network += ',filterref=clean-traffic'
-
-    disk = 'path={0},format=qcow2,bus=scsi,discard=unmap'.format(path)
-    channel = 'unix,name=org.qemu.guest_agent.0'
-
-    execute(('virt-install',
-             '--quiet',
-             '--connect={0}'.format(uri),
-             '--name', name,
-             '--cpu', 'host-model-only,+vmx',
-             '--vcpus', str(kwargs['cpus']),
-             '--memory', str(kwargs['memory']),
-             '--controller', 'scsi,model=virtio-scsi',
-             '--disk', disk,
-             '--network', network,
-             '--graphics', 'spice',
-             '--channel', channel,
-             '--os-variant', _get_image_os(template),
-             '--import',
-             '--noautoconsole',
-             '--noreboot'))
-
-    netmac = _get_domain_mac_addresses(_get_domain(conn, name)).next()
-    ipaddress = _new_network_ipaddress(net)
-
-    # TODO: fix race between _new_network_ipaddress and ip reservation
-    _add_network_host(net, hostname, ipaddress)
-    _add_network_dhcp_host(net, hostname, netmac['mac'], ipaddress)
-
-    return {
-        'name': name,
-        'password': kwargs['password'],
-        'mac': netmac['mac'],
-        'hostname': fqdn,
-        'ipaddress': ipaddress,
-    }
-
-
 def _get_domain(conn, name):
     try:
         return conn.lookupByName(name)
@@ -206,60 +277,6 @@ def _get_domain(conn, name):
         if e.get_error_code() == libvirt.VIR_ERR_NO_DOMAIN:
             raise InstanceNotFound(name)
         raise
-
-
-def instance_start(name, uri=''):
-    dom = _get_domain(_libvirt_open(uri), name)
-
-    try:
-        dom.create()
-    except libvirt.libvirtError as e:
-        if e.get_error_code() != libvirt.VIR_ERR_OPERATION_INVALID:
-            raise
-
-
-def instance_stop(name, uri=''):
-    dom = _get_domain(_libvirt_open(uri), name)
-
-    try:
-        dom.shutdownFlags(
-            libvirt.VIR_DOMAIN_SHUTDOWN_GUEST_AGENT |
-            libvirt.VIR_DOMAIN_SHUTDOWN_ACPI_POWER_BTN
-        )
-    except libvirt.libvirtError as e:
-        if e.get_error_code() != libvirt.VIR_ERR_OPERATION_INVALID:
-            raise
-
-
-def instance_delete(name, uri=''):
-    conn = _libvirt_open(uri)
-    dom = _get_domain(conn, name)
-
-    try:
-        dom.destroy()
-    except libvirt.libvirtError as e:
-        if e.get_error_code() != libvirt.VIR_ERR_OPERATION_INVALID:
-            raise
-
-    xmldesc = etree.fromstring(dom.XMLDesc())
-
-    for disk in xmldesc.iterfind('./devices/disk/source'):
-        os.remove(disk.get('file'))
-
-    netmacs = {}
-
-    for x in _get_domain_mac_addresses(dom):
-        netmacs.setdefault(x['network'], []).append(x['mac'])
-
-    for network, macs in netmacs.iteritems():
-        net = conn.networkLookupByName(network)
-
-        for x in _get_network_dhcp_hosts(net):
-            if x['mac'] in macs:
-                _del_network_host(net, x['ip'])
-                _del_network_dhcp_host(net, x['ip'])
-
-    dom.undefine()
 
 
 def _get_domain_mac_addresses(dom):
@@ -365,15 +382,3 @@ def _new_network_ipaddress(net):
     for ip in netaddr.IPNetwork(localip, netmask)[1:-1]:
         if ip not in addresses:
             return str(ip)
-
-
-def instance_address(name, uri='', network=DEFAULT_NET):
-    conn = _libvirt_open(uri)
-
-    hosts = _get_network_dhcp_leases(conn.networkLookupByName(network))
-    addresses = dict((x['mac'], x['ip']) for x in hosts)
-
-    macs = _get_domain_mac_addresses(_get_domain(conn, name))
-    netmacs = filter(lambda x: x['network'] == network, macs)
-
-    return filter(None, (addresses.get(x['mac']) for x in netmacs))

@@ -33,7 +33,7 @@ DRIVER = 'libvirt'
 
 
 def instance_create(args):
-    driver = virtdeploy.get_deployment_driver(DRIVER)
+    driver = virtdeploy.get_driver(DRIVER)
     instance = driver.instance_create(args.id, args.template)
 
     print('name: {0}'.format(instance['name']))
@@ -44,28 +44,28 @@ def instance_create(args):
 
 
 def instance_start(args):
-    driver = virtdeploy.get_deployment_driver(DRIVER)
+    driver = virtdeploy.get_driver(DRIVER)
     return driver.instance_start(args.name)
 
 
 def instance_stop(args):
-    driver = virtdeploy.get_deployment_driver(DRIVER)
+    driver = virtdeploy.get_driver(DRIVER)
     return driver.instance_stop(args.name)
 
 
 def instance_delete(args):
-    driver = virtdeploy.get_deployment_driver(DRIVER)
+    driver = virtdeploy.get_driver(DRIVER)
     return driver.instance_delete(args.name)
 
 
 def template_list(args):
-    driver = virtdeploy.get_deployment_driver(DRIVER)
+    driver = virtdeploy.get_driver(DRIVER)
     for template in driver.template_list():
         print(u'{0:24}{1:24}'.format(template['id'], template['name']))
 
 
 def instance_address(args):
-    driver = virtdeploy.get_deployment_driver(DRIVER)
+    driver = virtdeploy.get_driver(DRIVER)
     print('\n'.join(driver.instance_address(args.name)))
 
 
@@ -79,7 +79,7 @@ def instance_ssh(args):
     if user:
         command.extend(('-l', user))
 
-    driver = virtdeploy.get_deployment_driver(DRIVER)
+    driver = virtdeploy.get_driver(DRIVER)
     command.append(driver.instance_address(name)[0])
 
     return subprocess.call(command)

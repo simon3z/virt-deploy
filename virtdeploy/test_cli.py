@@ -24,11 +24,9 @@ import sys
 import unittest
 
 from mock import patch
-from mock import MagicMock
 
 from . import cli
 from . import errors
-from . import get_deployment_driver
 
 
 if sys.version_info[0] == 3:  # pragma: no cover
@@ -85,16 +83,8 @@ optional arguments:
             assert cm.exception.code == 130
 
     @patch('sys.stdout')
-    def test_get_deployment_driver(self, stdout_mock):
-        driver_mock = MagicMock()
-        with patch.dict('sys.modules',
-                        {'virtdeploy.drivers.libvirt': driver_mock}):
-            driver = get_deployment_driver('libvirt')
-        assert driver is driver_mock
-
-    @patch('sys.stdout')
     def test_instance_create(self, stdout_mock):
-        with patch('virtdeploy.get_deployment_driver') as driver_mock:
+        with patch('virtdeploy.get_driver') as driver_mock:
             instance_create = driver_mock.return_value.instance_create
             instance_create.return_value = {
                 'name': 'test01',
@@ -109,20 +99,20 @@ optional arguments:
 
     @patch('sys.stderr')
     def test_instance_create_fail1(self, stderr_mock):
-        with patch('virtdeploy.get_deployment_driver'):
+        with patch('virtdeploy.get_driver'):
             with self.assertRaises(SystemExit) as cm:
                 cli.parse_command_line(['create', 'test01'])
             assert cm.exception.code == 2
 
     @patch('sys.stderr')
     def test_instance_create_fail2(self, stderr_mock):
-        with patch('virtdeploy.get_deployment_driver'):
+        with patch('virtdeploy.get_driver'):
             with self.assertRaises(SystemExit) as cm:
                 cli.parse_command_line(['create'])
             assert cm.exception.code == 2
 
     def test_instance_delete(self):
-        with patch('virtdeploy.get_deployment_driver') as driver_mock:
+        with patch('virtdeploy.get_driver') as driver_mock:
             instance_delete = driver_mock.return_value.instance_delete
             cli.parse_command_line(['delete', 'test01'])
         driver_mock.assert_called_with('libvirt')
@@ -130,21 +120,21 @@ optional arguments:
 
     @patch('sys.stdout')
     def test_instance_address(self, stdout_mock):
-        with patch('virtdeploy.get_deployment_driver') as driver_mock:
+        with patch('virtdeploy.get_driver') as driver_mock:
             instance_address = driver_mock.return_value.instance_address
             cli.parse_command_line(['address', 'test01'])
         driver_mock.assert_called_with('libvirt')
         instance_address.assert_called_with('test01')
 
     def test_instance_start(self):
-        with patch('virtdeploy.get_deployment_driver') as driver_mock:
+        with patch('virtdeploy.get_driver') as driver_mock:
             instance_start = driver_mock.return_value.instance_start
             cli.parse_command_line(['start', 'test01'])
         driver_mock.assert_called_with('libvirt')
         instance_start.assert_called_with('test01')
 
     def test_instance_stop(self):
-        with patch('virtdeploy.get_deployment_driver') as driver_mock:
+        with patch('virtdeploy.get_driver') as driver_mock:
             instance_stop = driver_mock.return_value.instance_stop
             cli.parse_command_line(['stop', 'test01'])
         driver_mock.assert_called_with('libvirt')
@@ -152,7 +142,7 @@ optional arguments:
 
     @patch('sys.stdout')
     def test_template_list(self, stdout_mock):
-        with patch('virtdeploy.get_deployment_driver') as driver_mock:
+        with patch('virtdeploy.get_driver') as driver_mock:
             template_list = driver_mock.return_value.template_list
             template_list.return_value = [
                 {'id': 'centos-6', 'name': 'CentOS 6'},
@@ -163,7 +153,7 @@ optional arguments:
         template_list.assert_called_with()
 
     def test_instance_ssh(self):
-        with patch('virtdeploy.get_deployment_driver') as driver_mock:
+        with patch('virtdeploy.get_driver') as driver_mock:
             instance_address = driver_mock.return_value.instance_address
             instance_address.return_value = ['192.168.122.2']
             with patch('subprocess.call') as call_mock:
@@ -175,7 +165,7 @@ optional arguments:
                                       '192.168.122.2'])
 
     def test_instance_ssh_user(self):
-        with patch('virtdeploy.get_deployment_driver') as driver_mock:
+        with patch('virtdeploy.get_driver') as driver_mock:
             instance_address = driver_mock.return_value.instance_address
             instance_address.return_value = ['192.168.122.3']
             with patch('subprocess.call') as call_mock:

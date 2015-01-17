@@ -20,19 +20,22 @@
 
 from __future__ import absolute_import
 
-DRIVERS = {
-    'libvirt': ('drivers.libvirt', 'VirtDeployLibvirtDriver'),
-}
 
+class VirtDeployDriverBase(object):
+    def template_list(self):
+        raise NotImplementedError('template_list')
 
-def get_driver_names():
-    return DRIVERS.keys()
+    def instance_create(self, vmid, template, **kwargs):
+        raise NotImplementedError('instance_create')
 
+    def instance_address(self, vmid, network=None):
+        raise NotImplementedError('instance_address')
 
-def get_driver_class(name):
-    module = __import__(DRIVERS[name][0], globals(), locals(), name, 1)
-    return getattr(module, DRIVERS[name][1])
+    def instance_start(self, vmid):
+        raise NotImplementedError('instance_start')
 
+    def instance_stop(self, vmid):
+        raise NotImplementedError('instance_stop')
 
-def get_driver(name, args=(), kwargs={}):
-    return get_driver_class(name)(*args, **kwargs)
+    def instance_delete(self, vmid):
+        raise NotImplementedError('instance_delete')
