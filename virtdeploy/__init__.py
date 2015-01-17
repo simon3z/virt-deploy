@@ -20,13 +20,10 @@
 
 from __future__ import absolute_import
 
+DRIVERS = {
+    'libvirt': 'drivers.libvirt',
+}
 
-# TODO: driver dynamic loading
-from .drivers import libvirt as driver
 
-instance_create = driver.instance_create
-instance_start = driver.instance_start
-instance_stop = driver.instance_stop
-instance_delete = driver.instance_delete
-template_list = driver.template_list
-instance_address = driver.instance_address
+def get_deployment_driver(name):
+    return __import__(DRIVERS[name], globals(), locals(), [name], -1)

@@ -22,10 +22,14 @@ from __future__ import absolute_import
 
 import argparse
 import virtdeploy
+import virtdeploy.errors
+
+DRIVER = 'libvirt'
 
 
 def instance_create(args):
-    instance = virtdeploy.instance_create(args.id, args.template)
+    driver = virtdeploy.get_deployment_driver(DRIVER)
+    instance = driver.instance_create(args.id, args.template)
 
     print('name: {0}'.format(instance['name']))
     print('root password: {0}'.format(instance['password']))
@@ -35,24 +39,29 @@ def instance_create(args):
 
 
 def instance_start(args):
-    return virtdeploy.instance_start(args.name)
+    driver = virtdeploy.get_deployment_driver(DRIVER)
+    return driver.instance_start(args.name)
 
 
 def instance_stop(args):
-    return virtdeploy.instance_stop(args.name)
+    driver = virtdeploy.get_deployment_driver(DRIVER)
+    return driver.instance_stop(args.name)
 
 
 def instance_delete(args):
-    return virtdeploy.instance_delete(args.name)
+    driver = virtdeploy.get_deployment_driver(DRIVER)
+    return driver.instance_delete(args.name)
 
 
 def template_list(args):
-    for template in virtdeploy.template_list():
+    driver = virtdeploy.get_deployment_driver(DRIVER)
+    for template in driver.template_list():
         print(u'{0:24}{1:24}'.format(template['id'], template['name']))
 
 
 def instance_address(args):
-    print('\n'.join(virtdeploy.instance_address(args.name)))
+    driver = virtdeploy.get_deployment_driver(DRIVER)
+    print('\n'.join(driver.instance_address(args.name)))
 
 
 COMMAND_TABLE = {
