@@ -20,24 +20,30 @@
 
 from __future__ import absolute_import
 
-import random
-import string
-import subprocess
+import unittest
+from mock import Mock
+from mock import patch
 
-_PASSWORD_CHARS = string.ascii_letters + string.digits + '!#$%&'
-
-
-def execute(args, stdout=None, stderr=None, cwd=None):
-    p = subprocess.Popen(args, stdout=stdout, stderr=stderr, cwd=cwd)
-
-    out, err = p.communicate()
-
-    if p.returncode != 0:
-        subprocess.CalledProcessError(p.returncode, args)
-
-    return out, err
+from . import utils
 
 
-def random_password(size=12):
-    chars = (random.choice(_PASSWORD_CHARS) for _ in range(size))
-    return ''.join(chars)
+class TestRandomPassword(unittest.TestCase):
+    def test_random_password(self):
+        for size in range(6, 24):
+            assert len(utils.random_password(size=size)) == size
+
+
+class TestExecute(unittest.TestCase):
+    @patch('subprocess.Popen')
+    def test_execute_success(self, Popen):
+        command = ('command', 'arg1', 'arg2')
+        optargs = {'stdout': 1, 'stderr': 2, 'cwd': '/path'}
+        outputs = ('hello stdout', 'hello stderr')
+
+        Popen.return_value.attach_mock(Mock(return_value=outputs),
+                                       'communicate')
+
+        ret = utils.execute(command, **optargs)
+
+        Popen.assert_called_once_with(command, **optargs)
+        assert ret == outputs
