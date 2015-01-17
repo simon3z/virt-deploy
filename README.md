@@ -1,5 +1,7 @@
 # Easily Deploy Virtual Machines
 
+![Build Status](https://travis-ci.org/simon3z/virt-deploy.svg)
+
 Virt-deploy is a python library to standardize the deployment of virtual machines.
 It currently supports [libvirt](http://libvirt.org) and takes advantage of
 [virt-builder](http://libguestfs.org/virt-builder.1.html]) and

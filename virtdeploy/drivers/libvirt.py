@@ -214,7 +214,7 @@ def instance_delete(name, uri=''):
     except libvirt.libvirtError as e:
         if e.get_error_code() != libvirt.VIR_ERR_NO_DOMAIN:
             raise
-        return  ## nothing to do from here down
+        return  # nothing to do from here down
 
     try:
         dom.destroy()
