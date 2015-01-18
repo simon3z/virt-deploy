@@ -21,6 +21,8 @@
 from __future__ import absolute_import
 
 import argparse
+import sys
+
 import virtdeploy
 import virtdeploy.errors
 
@@ -74,7 +76,7 @@ COMMAND_TABLE = {
 }
 
 
-def main():
+def parse_command_line(cmdline):
     parser = argparse.ArgumentParser()
     cmd = parser.add_subparsers(dest='command')
 
@@ -96,10 +98,13 @@ def main():
     cmd_address = cmd.add_parser('address', help='instance ip address')
     cmd_address.add_argument('name', help='instance name')
 
-    args = parser.parse_args()
+    args = parser.parse_args(args=cmdline)
+    return COMMAND_TABLE[args.command](args)
 
+
+def main():
     try:
-        return COMMAND_TABLE[args.command](args)
+        return parse_command_line(sys.argv[1:])
     except virtdeploy.errors.VirtDeployException as e:
         print('error: {0}'.format(e))
-        return 1
+        raise SystemExit(1)
