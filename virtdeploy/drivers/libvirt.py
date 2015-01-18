@@ -22,11 +22,12 @@ from __future__ import absolute_import
 
 import json
 import libvirt
-import libxml2
 import netaddr
 import os
 import os.path
 import subprocess
+
+from lxml import etree
 
 from ..utils import execute
 from ..utils import random_password
@@ -239,10 +240,10 @@ def instance_delete(name, uri=''):
         if e.get_error_code() != libvirt.VIR_ERR_OPERATION_INVALID:
             raise
 
-    xmldesc = libxml2.parseDoc(dom.XMLDesc())
+    xmldesc = etree.fromstring(dom.XMLDesc())
 
-    for disk in xmldesc.xpathEval('/domain/devices/disk/source'):
-        os.remove(disk.prop('file'))
+    for disk in xmldesc.iterfind('./devices/disk/source'):
+        os.remove(disk.get('file'))
 
     netmacs = {}
 
@@ -261,49 +262,49 @@ def instance_delete(name, uri=''):
 
 
 def _get_domain_mac_addresses(dom):
-    xmldesc = libxml2.parseDoc(dom.XMLDesc())
-    netxpath = '/domain/devices/interface[@type="network"]'
+    xmldesc = etree.fromstring(dom.XMLDesc())
+    netxpath = './devices/interface[@type="network"]'
 
-    for iface in xmldesc.xpathEval(netxpath):
-        network = iface.xpathEval('./source')[0].prop('network')
-        mac = iface.xpathEval('./mac')[0].prop('address')
+    for iface in xmldesc.iterfind(netxpath):
+        network = iface.find('./source').get('network')
+        mac = iface.find('./mac').get('address')
 
         yield {'mac': mac, 'network': network}
 
 
 def _get_pool_path(pool):
-    xmldesc = libxml2.parseDoc(pool.XMLDesc())
+    xmldesc = etree.fromstring(pool.XMLDesc())
 
-    for x in xmldesc.xpathEval('/pool[@type="dir"]/target/path'):
-        return x.getContent()
+    for x in xmldesc.iterfind('.[@type="dir"]/target/path'):
+        return x.text
 
     raise OSError(os.errno.ENOENT, 'Path not found for pool')
 
 
 def _get_network_domainname(net):
-    xmldesc = libxml2.parseDoc(net.XMLDesc())
+    xmldesc = etree.fromstring(net.XMLDesc())
 
-    for domain in xmldesc.xpathEval('/network/domain'):
-        return domain.prop('name')
+    for domain in xmldesc.iterfind('./domain'):
+        return domain.get('name')
 
 
 def _add_network_host(net, hostname, ipaddress):
-    xmlhost = libxml2.newNode('host')
-    xmlhost.newProp('ip', ipaddress)
-    xmlhost.newChild(None, 'hostname', hostname)
+    xmlhost = etree.Element('host')
+    xmlhost.set('ip', ipaddress)
+    etree.SubElement(xmlhost, 'hostname').text = hostname
 
     # Attempt to delete if present
     _del_network_host(net, ipaddress)
-    net.update(_NET_ADD_LAST, _NET_DNS_HOST, 0, str(xmlhost),
+    net.update(_NET_ADD_LAST, _NET_DNS_HOST, 0, etree.tostring(xmlhost),
                _NET_UPDATE_FLAGS)
 
 
 def _del_network_host(net, ipaddress):
-    xmlhost = libxml2.newNode('host')
-    xmlhost.newProp('ip', ipaddress)
+    xmlhost = etree.Element('host')
+    xmlhost.set('ip', ipaddress)
 
     try:
-        net.update(_NET_DELETE, _NET_DNS_HOST, 0, str(xmlhost),
+        net.update(_NET_DELETE, _NET_DNS_HOST, 0, etree.tostring(xmlhost),
                    _NET_UPDATE_FLAGS)
     except libvirt.libvirtError as e:
         if e.get_error_code() != libvirt.VIR_ERR_OPERATION_INVALID:
@@ -311,21 +312,21 @@ def _del_network_host(net, ipaddress):
 
 
 def _add_network_dhcp_host(net, hostname, mac, ipaddress):
-    xmlhost = libxml2.newNode('host')
-    xmlhost.newProp('mac', mac)
-    xmlhost.newProp('name', hostname)
-    xmlhost.newProp('ip', ipaddress)
+    xmlhost = etree.Element('host')
+    xmlhost.set('mac', mac)
+    xmlhost.set('name', hostname)
+    xmlhost.set('ip', ipaddress)
 
-    net.update(_NET_ADD_LAST, _NET_DHCP_HOST, 0, str(xmlhost),
+    net.update(_NET_ADD_LAST, _NET_DHCP_HOST, 0, etree.tostring(xmlhost),
                _NET_UPDATE_FLAGS)
 
 
 def _del_network_dhcp_host(net, ipaddress):
-    xmlhost = libxml2.newNode('host')
-    xmlhost.newProp('ip', ipaddress)
+    xmlhost = etree.Element('host')
+    xmlhost.set('ip', ipaddress)
 
     try:
-        net.update(_NET_DELETE, _NET_DHCP_HOST, 0, str(xmlhost),
+        net.update(_NET_DELETE, _NET_DHCP_HOST, 0, etree.tostring(xmlhost),
                    _NET_UPDATE_FLAGS)
     except libvirt.libvirtError as e:
         if e.get_error_code() != libvirt.VIR_ERR_OPERATION_INVALID:
@@ -333,11 +334,11 @@ def _del_network_dhcp_host(net, ipaddress):
 
 
 def _get_network_dhcp_hosts(net):
-    xmldesc = libxml2.parseDoc(net.XMLDesc())
+    xmldesc = etree.fromstring(net.XMLDesc())
 
-    for x in xmldesc.xpathEval('/network/ip/dhcp/host'):
-        yield {'name': x.prop('name'), 'mac': x.prop('mac'),
-               'ip': x.prop('ip')}
+    for x in xmldesc.iterfind('./ip/dhcp/host'):
+        yield {'name': x.get('name'), 'mac': x.get('mac'),
+               'ip': x.get('ip')}
 
 
 def _get_network_dhcp_leases(net):
@@ -350,13 +351,13 @@ def _get_network_dhcp_leases(net):
 
 
 def _new_network_ipaddress(net):
-    xmldesc = libxml2.parseDoc(net.XMLDesc())
+    xmldesc = etree.fromstring(net.XMLDesc())
 
     hosts = _get_network_dhcp_leases(net)
     addresses = set(netaddr.IPAddress(x['ip']) for x in hosts)
 
-    localip = xmldesc.xpathEval('/network/ip')[0].prop('address')
-    netmask = xmldesc.xpathEval('/network/ip')[0].prop('netmask')
+    localip = xmldesc.find('./ip').get('address')
+    netmask = xmldesc.find('./ip').get('netmask')
 
     addresses.add(netaddr.IPAddress(localip))
 
