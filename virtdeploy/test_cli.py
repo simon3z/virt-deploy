@@ -35,7 +35,7 @@ else:
 
 class TestCommandLine(unittest.TestCase):
     HELP_OUTPUT = """\
-usage: python -m unittest [-h]
+usage: python -m unittest [-h] [-v]
                           {create,start,stop,delete,templates,address} ...
 
 positional arguments:
@@ -49,6 +49,7 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+  -v, --version         show program's version number and exit
 """
 
     def test_help(self):
@@ -62,9 +63,6 @@ optional arguments:
             try:
                 cli.parse_command_line(['--help'])
             except SystemExit as e:
-                if e.code != 0:
-                    raise
-            else:
-                raise AssertionError('SystemExit was expected')
+                assert e.code == 0
 
         assert output.getvalue() == self.HELP_OUTPUT

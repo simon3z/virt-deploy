@@ -21,6 +21,7 @@
 from __future__ import absolute_import
 
 import argparse
+import pkg_resources
 import sys
 
 import virtdeploy
@@ -78,6 +79,11 @@ COMMAND_TABLE = {
 
 def parse_command_line(cmdline):
     parser = argparse.ArgumentParser()
+
+    version = pkg_resources.get_distribution('virtdeploy').version
+    parser.add_argument('-v', '--version', action='version',
+                        version='%(prog)s {0}'.format(version))
+
     cmd = parser.add_subparsers(dest='command')
 
     cmd_create = cmd.add_parser('create', help='create a new instance')
