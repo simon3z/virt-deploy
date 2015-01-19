@@ -196,6 +196,24 @@ class TestNetworkDhcpHosts(unittest.TestCase):
          'ip': '192.168.122.4'},
     ]
 
+    NETXML_LEASES = [
+        {'hostname': 'lease04', 'mac': '52:54:00:a1:b2:01',
+         'ipaddr': '192.168.122.5'},
+        {'hostname': 'lease05', 'mac': '52:54:00:a1:b2:02',
+         'ipaddr': '192.168.122.6'},
+        {'hostname': None, 'mac': '52:54:00:a1:b2:03',
+         'ipaddr': '192.168.122.7'},
+    ]
+
+    NETXML_LEASES_EXPECTED = [
+        {'mac': '52:54:00:a1:b2:01', 'name': 'lease04',
+         'ip': '192.168.122.5'},
+        {'mac': '52:54:00:a1:b2:02', 'name': 'lease05',
+         'ip': '192.168.122.6'},
+        {'mac': '52:54:00:a1:b2:03', 'name': None,
+         'ip': '192.168.122.7'},
+    ]
+
     NETXML_DHCP_EMPTY = """\
 <network>
   <ip address='192.168.122.1' netmask='255.255.255.0'>
@@ -241,6 +259,20 @@ class TestNetworkDhcpHosts(unittest.TestCase):
             driver._del_network_dhcp_host(net, '192.168.122.2')
         expected_xml = '<host ip="192.168.122.2"/>'
         net.update.assert_called_with(2, 4, 0, expected_xml.encode(), 3)
+
+    def test_get_dhcp_leases(self):
+        with xmldesc_mock(self.NETXML_DHCP) as (driver, net):
+            net.DHCPLeases.return_value = self.NETXML_LEASES
+            hosts = list(driver._get_network_dhcp_leases(net))
+        net.DHCPLeases.assert_called_with()
+        assert hosts == (self.NETXML_DHCP_EXPECTED +
+                         self.NETXML_LEASES_EXPECTED)
+
+    def test_new_network_ipaddress(self):
+        with xmldesc_mock(self.NETXML_DHCP) as (driver, net):
+            net.DHCPLeases.return_value = self.NETXML_LEASES
+            ipaddress = driver._new_network_ipaddress(net)
+        assert ipaddress == '192.168.122.8'
 
 
 class TestNetworkDnsHosts(unittest.TestCase):
