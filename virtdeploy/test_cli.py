@@ -63,10 +63,9 @@ optional arguments:
 
         with patch('argparse.ArgumentParser.print_help',
                    spec=True, new_callable=wrap_print_help):
-            try:
+            with self.assertRaises(SystemExit) as cm:
                 cli.parse_command_line(['--help'])
-            except SystemExit as e:
-                assert e.code == 0
+            assert cm.exception.code == 0
 
         assert output.getvalue() == self.HELP_OUTPUT
 
@@ -79,7 +78,6 @@ optional arguments:
     def test_main_failure(self, print_mock):
         with patch('virtdeploy.cli.parse_command_line') as func_mock:
             func_mock.side_effect = errors.VirtDeployException
-            try:
+            with self.assertRaises(SystemExit) as cm:
                 cli.main()
-            except SystemExit as e:
-                assert e.code == 1
+            assert cm.exception.code == 1

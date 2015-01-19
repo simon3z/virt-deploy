@@ -119,10 +119,9 @@ class TestStorage(unittest.TestCase):
 
     def test_pool_path_iscsi(self):
         with xmldesc_mock(self.POOLXML_PATH_ISCSI) as (driver, pool):
-            try:
+            with self.assertRaises(OSError) as cm:
                 driver._get_pool_path(pool)
-            except OSError as e:
-                assert e.errno == errno.ENOENT
+            assert cm.exception.errno == errno.ENOENT
 
 
 class TestDomain(unittest.TestCase):
