@@ -25,12 +25,15 @@ import sys
 import unittest
 
 from . import cli
+from . import errors
 
 
-if sys.version_info >= (3, 0):
+if sys.version_info[0] == 3:
     from io import StringIO
+    builtins_print = 'builtins.print'
 else:
     from StringIO import StringIO
+    builtins_print = '__builtin__.print'
 
 
 class TestCommandLine(unittest.TestCase):
@@ -66,3 +69,17 @@ optional arguments:
                 assert e.code == 0
 
         assert output.getvalue() == self.HELP_OUTPUT
+
+    def test_main_success(self):
+        with patch('virtdeploy.cli.parse_command_line') as func_mock:
+            cli.main()
+            func_mock.assert_call()
+
+    @patch(builtins_print)
+    def test_main_failure(self, print_mock):
+        with patch('virtdeploy.cli.parse_command_line') as func_mock:
+            func_mock.side_effect = errors.VirtDeployException
+            try:
+                cli.main()
+            except SystemExit as e:
+                assert e.code == 1

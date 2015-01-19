@@ -22,12 +22,14 @@ from __future__ import absolute_import
 
 
 class VirtDeployException(Exception):
-    pass
+    def __init__(self, message="Unknown error"):
+        self.message = message
+
+    def __str__(self):
+        return self.message
 
 
 class InstanceNotFound(VirtDeployException):
     def __init__(self, name):
-        self.name = name
-
-    def __str__(self):
-        return 'No such instance: {0}'.format(self.name)
+        super(InstanceNotFound, self).__init__(
+            'No such instance: {0}'.format(name))
