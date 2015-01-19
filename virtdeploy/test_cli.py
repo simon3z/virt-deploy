@@ -72,3 +72,72 @@ optional arguments:
             with self.assertRaises(SystemExit) as cm:
                 cli.main()
             assert cm.exception.code == 1
+
+    @patch('sys.stdout')
+    def test_instance_create(self, stdout_mock):
+        with patch('virtdeploy.get_deployment_driver') as driver_mock:
+            instance_create = driver_mock.return_value.instance_create
+            instance_create.return_value = {
+                'name': 'test01',
+                'password': 'password',
+                'mac': '52:54:00:a0:b0:01',
+                'hostname': 'vm-test01.example.com',
+                'ipaddress': '192.168.122.2',
+            }
+            cli.parse_command_line(['create', 'test01', 'base01'])
+        driver_mock.assert_called_with('libvirt')
+        instance_create.assert_called_with('test01', 'base01')
+
+    @patch('sys.stderr')
+    def test_instance_create_fail1(self, stderr_mock):
+        with patch('virtdeploy.get_deployment_driver'):
+            with self.assertRaises(SystemExit) as cm:
+                cli.parse_command_line(['create', 'test01'])
+            assert cm.exception.code == 2
+
+    @patch('sys.stderr')
+    def test_instance_create_fail2(self, stderr_mock):
+        with patch('virtdeploy.get_deployment_driver'):
+            with self.assertRaises(SystemExit) as cm:
+                cli.parse_command_line(['create'])
+            assert cm.exception.code == 2
+
+    def test_instance_delete(self):
+        with patch('virtdeploy.get_deployment_driver') as driver_mock:
+            instance_delete = driver_mock.return_value.instance_delete
+            cli.parse_command_line(['delete', 'test01'])
+        driver_mock.assert_called_with('libvirt')
+        instance_delete.assert_called_with('test01')
+
+    def test_instance_address(self):
+        with patch('virtdeploy.get_deployment_driver') as driver_mock:
+            instance_address = driver_mock.return_value.instance_address
+            cli.parse_command_line(['address', 'test01'])
+        driver_mock.assert_called_with('libvirt')
+        instance_address.assert_called_with('test01')
+
+    def test_instance_start(self):
+        with patch('virtdeploy.get_deployment_driver') as driver_mock:
+            instance_start = driver_mock.return_value.instance_start
+            cli.parse_command_line(['start', 'test01'])
+        driver_mock.assert_called_with('libvirt')
+        instance_start.assert_called_with('test01')
+
+    def test_instance_stop(self):
+        with patch('virtdeploy.get_deployment_driver') as driver_mock:
+            instance_stop = driver_mock.return_value.instance_stop
+            cli.parse_command_line(['stop', 'test01'])
+        driver_mock.assert_called_with('libvirt')
+        instance_stop.assert_called_with('test01')
+
+    @patch('sys.stdout')
+    def test_template_list(self, stdout_mock):
+        with patch('virtdeploy.get_deployment_driver') as driver_mock:
+            template_list = driver_mock.return_value.template_list
+            template_list.return_value = [
+                {'id': 'centos-6', 'name': 'CentOS 6'},
+                {'id': 'centos-7', 'name': 'CentOS 7'},
+            ]
+            cli.parse_command_line(['templates'])
+        driver_mock.assert_called_with('libvirt')
+        template_list.assert_called_with()
