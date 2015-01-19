@@ -37,12 +37,17 @@ libvirt_mock.VIR_NETWORK_SECTION_DNS_HOST = 10
 libvirt_mock.VIR_NETWORK_SECTION_IP_DHCP_HOST = 4
 libvirt_mock.VIR_NETWORK_UPDATE_AFFECT_CONFIG = 2
 libvirt_mock.VIR_NETWORK_UPDATE_AFFECT_LIVE = 1
+libvirt_mock.VIR_ERR_OPERATION_INVALID = 55
 
 
-class MockLibvirtError(Exception):
-    pass
+class libvirtErrorMock(Exception):
+    def __init__(self, code):
+        self.code = code
 
-libvirt_mock.libvirtError = MockLibvirtError
+    def get_error_code(self):
+        return self.code
+
+libvirt_mock.libvirtError = libvirtErrorMock
 
 
 @contextmanager
@@ -260,6 +265,17 @@ class TestNetworkDhcpHosts(unittest.TestCase):
         expected_xml = '<host ip="192.168.122.2"/>'
         net.update.assert_called_with(2, 4, 0, expected_xml.encode(), 3)
 
+    def test_del_dhcp_host_failure_raised(self):
+        with xmldesc_mock() as (driver, net):
+            net.update.side_effect = libvirtErrorMock(1)
+            with self.assertRaises(libvirtErrorMock):
+                driver._del_network_dhcp_host(net, '192.168.122.2')
+
+    def test_del_dhcp_host_failure_caught(self):
+        with xmldesc_mock() as (driver, net):
+            net.update.side_effect = libvirtErrorMock(55)
+            driver._del_network_dhcp_host(net, '192.168.122.2')
+
     def test_get_dhcp_leases(self):
         with xmldesc_mock(self.NETXML_DHCP) as (driver, net):
             net.DHCPLeases.return_value = self.NETXML_LEASES
@@ -288,3 +304,14 @@ class TestNetworkDnsHosts(unittest.TestCase):
             driver._del_network_host(net, '192.168.122.2')
         expected_xml = '<host ip="192.168.122.2"/>'
         net.update.assert_called_with(2, 10, 0, expected_xml.encode(), 3)
+
+    def test_del_dns_failure_raised(self):
+        with xmldesc_mock() as (driver, net):
+            net.update.side_effect = libvirtErrorMock(1)
+            with self.assertRaises(libvirtErrorMock):
+                driver._del_network_host(net, '192.168.122.2')
+
+    def test_del_dns_failure_caught(self):
+        with xmldesc_mock() as (driver, net):
+            net.update.side_effect = libvirtErrorMock(55)
+            driver._del_network_host(net, '192.168.122.2')
