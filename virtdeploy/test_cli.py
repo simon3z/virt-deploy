@@ -28,10 +28,10 @@ from . import cli
 from . import errors
 
 
-if sys.version_info[0] == 3:
+if sys.version_info[0] == 3:  # pragma: no cover
     from io import StringIO
     builtins_print = 'builtins.print'
-else:
+else:  # pragma: no cover
     from StringIO import StringIO
     builtins_print = '__builtin__.print'
 
