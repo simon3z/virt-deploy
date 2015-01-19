@@ -113,5 +113,5 @@ def main():
     try:
         return parse_command_line(sys.argv[1:])
     except virtdeploy.errors.VirtDeployException as e:
-        print('error: {0}'.format(e))
+        print('error: {0}'.format(e), file=sys.stderr)
         raise SystemExit(1)

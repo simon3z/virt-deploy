@@ -30,10 +30,8 @@ from . import errors
 
 if sys.version_info[0] == 3:  # pragma: no cover
     from io import StringIO
-    builtins_print = 'builtins.print'
 else:  # pragma: no cover
     from StringIO import StringIO
-    builtins_print = '__builtin__.print'
 
 
 class TestCommandLine(unittest.TestCase):
@@ -56,26 +54,19 @@ optional arguments:
 """
 
     def test_help(self):
-        output = StringIO()
-
-        def wrap_print_help(spec):
-            return lambda x: spec(x, file=output)
-
-        with patch('argparse.ArgumentParser.print_help',
-                   spec=True, new_callable=wrap_print_help):
+        with patch('sys.stdout', new=StringIO()) as stdout_mock:
             with self.assertRaises(SystemExit) as cm:
                 cli.parse_command_line(['--help'])
             assert cm.exception.code == 0
-
-        assert output.getvalue() == self.HELP_OUTPUT
+        assert stdout_mock.getvalue() == self.HELP_OUTPUT
 
     def test_main_success(self):
         with patch('virtdeploy.cli.parse_command_line') as func_mock:
             cli.main()
             func_mock.assert_call()
 
-    @patch(builtins_print)
-    def test_main_failure(self, print_mock):
+    @patch('sys.stderr')
+    def test_main_failure(self, stderr_mock):
         with patch('virtdeploy.cli.parse_command_line') as func_mock:
             func_mock.side_effect = errors.VirtDeployException
             with self.assertRaises(SystemExit) as cm:
