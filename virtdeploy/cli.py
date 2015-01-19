@@ -23,6 +23,7 @@ from __future__ import print_function
 
 import argparse
 import pkg_resources
+import subprocess
 import sys
 
 import virtdeploy
@@ -68,6 +69,22 @@ def instance_address(args):
     print('\n'.join(driver.instance_address(args.name)))
 
 
+def instance_ssh(args):
+    command = ['ssh', '-A',
+               '-o', 'StrictHostKeychecking=no',
+               '-o', 'UserKnownHostsFile=/dev/null',
+               '-o', 'LogLevel=QUIET']
+
+    user, _, name = args.name.rpartition('@')
+    if user:
+        command.extend(('-l', user))
+
+    driver = virtdeploy.get_deployment_driver(DRIVER)
+    command.append(driver.instance_address(name)[0])
+
+    return subprocess.call(command)
+
+
 COMMAND_TABLE = {
     'create': instance_create,
     'start': instance_start,
@@ -75,6 +92,7 @@ COMMAND_TABLE = {
     'delete': instance_delete,
     'templates': template_list,
     'address': instance_address,
+    'ssh': instance_ssh,
 }
 
 
@@ -104,6 +122,9 @@ def parse_command_line(cmdline):
 
     cmd_address = cmd.add_parser('address', help='instance ip address')
     cmd_address.add_argument('name', help='instance name')
+
+    cmd_ssh = cmd.add_parser('ssh', help='connects to the instance')
+    cmd_ssh.add_argument('name', help='instance name')
 
     args = parser.parse_args(args=cmdline)
     return COMMAND_TABLE[args.command](args)

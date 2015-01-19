@@ -40,16 +40,17 @@ else:  # pragma: no cover
 class TestCommandLine(unittest.TestCase):
     HELP_OUTPUT = """\
 usage: python -m unittest [-h] [-v]
-                          {create,start,stop,delete,templates,address} ...
+                          {create,start,stop,delete,templates,address,ssh} ...
 
 positional arguments:
-  {create,start,stop,delete,templates,address}
+  {create,start,stop,delete,templates,address,ssh}
     create              create a new instance
     start               start an instance
     stop                stop an instance
     delete              delete an instance
     templates           list all the templates
     address             instance ip address
+    ssh                 connects to the instance
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -159,3 +160,28 @@ optional arguments:
             cli.parse_command_line(['templates'])
         driver_mock.assert_called_with('libvirt')
         template_list.assert_called_with()
+
+    def test_instance_ssh(self):
+        with patch('virtdeploy.get_deployment_driver') as driver_mock:
+            instance_address = driver_mock.return_value.instance_address
+            instance_address.return_value = ['192.168.122.2']
+            with patch('subprocess.call') as call_mock:
+                cli.parse_command_line(['ssh', 'test01'])
+        call_mock.assert_called_with(['ssh', '-A',
+                                      '-o', 'StrictHostKeychecking=no',
+                                      '-o', 'UserKnownHostsFile=/dev/null',
+                                      '-o', 'LogLevel=QUIET',
+                                      '192.168.122.2'])
+
+    def test_instance_ssh_user(self):
+        with patch('virtdeploy.get_deployment_driver') as driver_mock:
+            instance_address = driver_mock.return_value.instance_address
+            instance_address.return_value = ['192.168.122.3']
+            with patch('subprocess.call') as call_mock:
+                cli.parse_command_line(['ssh', 'root@test02'])
+        call_mock.assert_called_with(['ssh', '-A',
+                                      '-o', 'StrictHostKeychecking=no',
+                                      '-o', 'UserKnownHostsFile=/dev/null',
+                                      '-o', 'LogLevel=QUIET',
+                                      '-l', 'root',
+                                      '192.168.122.3'])
