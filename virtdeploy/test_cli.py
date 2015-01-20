@@ -128,7 +128,8 @@ optional arguments:
         driver_mock.assert_called_with('libvirt')
         instance_delete.assert_called_with('test01')
 
-    def test_instance_address(self):
+    @patch('sys.stdout')
+    def test_instance_address(self, stdout_mock):
         with patch('virtdeploy.get_deployment_driver') as driver_mock:
             instance_address = driver_mock.return_value.instance_address
             cli.parse_command_line(['address', 'test01'])
