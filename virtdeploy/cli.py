@@ -115,3 +115,5 @@ def main():
     except virtdeploy.errors.VirtDeployException as e:
         print('error: {0}'.format(e), file=sys.stderr)
         raise SystemExit(1)
+    except KeyboardInterrupt:
+        raise SystemExit(130)

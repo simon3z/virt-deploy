@@ -73,6 +73,13 @@ optional arguments:
                 cli.main()
             assert cm.exception.code == 1
 
+    def test_main_interrupt(self):
+        with patch('virtdeploy.cli.parse_command_line') as func_mock:
+            func_mock.side_effect = KeyboardInterrupt
+            with self.assertRaises(SystemExit) as cm:
+                cli.main()
+            assert cm.exception.code == 130
+
     @patch('sys.stdout')
     def test_instance_create(self, stdout_mock):
         with patch('virtdeploy.get_deployment_driver') as driver_mock:
