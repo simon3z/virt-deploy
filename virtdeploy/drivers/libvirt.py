@@ -167,6 +167,7 @@ def instance_create(vmid, template, uri='', **kwargs):
     channel = 'unix,name=org.qemu.guest_agent.0'
 
     execute(('virt-install',
+             '--quiet',
              '--connect={0}'.format(uri),
              '--name', name,
              '--cpu', 'host-model-only,+vmx',
