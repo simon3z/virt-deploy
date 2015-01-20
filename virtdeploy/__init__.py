@@ -26,4 +26,4 @@ DRIVERS = {
 
 
 def get_deployment_driver(name):
-    return __import__(DRIVERS[name], globals(), locals(), [name], -1)
+    return __import__(DRIVERS[name], globals(), locals(), [name], 1)

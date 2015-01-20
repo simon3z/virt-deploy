@@ -20,12 +20,15 @@
 
 from __future__ import absolute_import
 
-from mock import patch
 import sys
 import unittest
 
+from mock import patch
+from mock import MagicMock
+
 from . import cli
 from . import errors
+from . import get_deployment_driver
 
 
 if sys.version_info[0] == 3:  # pragma: no cover
@@ -79,6 +82,14 @@ optional arguments:
             with self.assertRaises(SystemExit) as cm:
                 cli.main()
             assert cm.exception.code == 130
+
+    @patch('sys.stdout')
+    def test_get_deployment_driver(self, stdout_mock):
+        driver_mock = MagicMock()
+        with patch.dict('sys.modules',
+                        {'virtdeploy.drivers.libvirt': driver_mock}):
+            driver = get_deployment_driver('libvirt')
+        assert driver is driver_mock
 
     @patch('sys.stdout')
     def test_instance_create(self, stdout_mock):
