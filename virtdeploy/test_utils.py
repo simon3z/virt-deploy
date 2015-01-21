@@ -21,8 +21,9 @@
 from __future__ import absolute_import
 
 import unittest
-from mock import Mock
+
 from mock import patch
+from subprocess import CalledProcessError
 
 from . import utils
 
@@ -34,16 +35,26 @@ class TestRandomPassword(unittest.TestCase):
 
 
 class TestExecute(unittest.TestCase):
-    @patch('subprocess.Popen')
-    def test_execute_success(self, Popen):
+    def test_execute_success(self):
         command = ('command', 'arg1', 'arg2')
         optargs = {'stdout': 1, 'stderr': 2, 'cwd': '/path'}
         outputs = ('hello stdout', 'hello stderr')
 
-        Popen.return_value.attach_mock(Mock(return_value=outputs),
-                                       'communicate')
+        with patch('subprocess.Popen') as popen_mock:
+            popen_mock.return_value.communicate.return_value = outputs
+            popen_mock.return_value.returncode = 0
+            assert utils.execute(command, **optargs) == outputs
 
-        ret = utils.execute(command, **optargs)
+        popen_mock.assert_called_once_with(command, **optargs)
 
-        Popen.assert_called_once_with(command, **optargs)
-        assert ret == outputs
+    def test_execute_failure(self):
+        command = ('command', 'arg1', 'arg2')
+        optargs = {'stdout': 1, 'stderr': 2, 'cwd': '/path'}
+        outputs = ('', 'command error output')
+
+        with patch('subprocess.Popen') as popen_mock:
+            popen_mock.return_value.communicate.return_value = outputs
+            popen_mock.return_value.returncode = 1
+            with self.assertRaises(CalledProcessError) as cm:
+                utils.execute(command, **optargs)
+            assert cm.exception.returncode == 1

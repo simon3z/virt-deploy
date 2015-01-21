@@ -33,7 +33,7 @@ def execute(args, stdout=None, stderr=None, cwd=None):
     out, err = p.communicate()
 
     if p.returncode != 0:
-        subprocess.CalledProcessError(p.returncode, args)
+        raise subprocess.CalledProcessError(p.returncode, args)
 
     return out, err
 
