@@ -5,7 +5,7 @@
 
 Virt-deploy is a python library to standardize the deployment of virtual machines.
 It currently supports [libvirt](http://libvirt.org) and takes advantage of
-[virt-builder](http://libguestfs.org/virt-builder.1.html]) and
+[virt-builder](http://libguestfs.org/virt-builder.1.html) and
 [virt-install](http://virt-manager.org) to automate the creation of templates and
 instances.
 
