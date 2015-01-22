@@ -165,17 +165,23 @@ class VirtDeployLibvirtDriver(VirtDeployDriverBase):
 
     def instance_address(self, vmid, network=None):
         conn = _libvirt_open(self.uri)
+        dom = _get_domain(conn, vmid)
 
-        if network is None:
-            network = DEFAULT_NET
+        netmacs = _get_domain_macs_by_network(dom)
 
-        hosts = _get_network_dhcp_leases(conn.networkLookupByName(network))
-        addresses = dict((x['mac'], x['ip']) for x in hosts)
+        if network:
+            netmacs = {k: v for k, v in netmacs.iteritems()}
 
-        macs = _get_domain_mac_addresses(_get_domain(conn, vmid))
-        netmacs = filter(lambda x: x['network'] == network, macs)
+        addresses = []
 
-        return filter(None, (addresses.get(x['mac']) for x in netmacs))
+        for name, macs in netmacs.iteritems():
+            net = conn.networkLookupByName(name)
+
+            for lease in _get_network_dhcp_leases(net):
+                if lease['mac'] in macs:
+                    addresses.append(lease['ip'])
+
+        return addresses
 
     def instance_start(self, vmid):
         dom = _get_domain(_libvirt_open(self.uri), vmid)
@@ -213,10 +219,7 @@ class VirtDeployLibvirtDriver(VirtDeployDriverBase):
         for disk in xmldesc.iterfind('./devices/disk/source'):
             os.remove(disk.get('file'))
 
-        netmacs = {}
-
-        for x in _get_domain_mac_addresses(dom):
-            netmacs.setdefault(x['network'], []).append(x['mac'])
+        netmacs = _get_domain_macs_by_network(dom)
 
         for network, macs in netmacs.iteritems():
             net = conn.networkLookupByName(network)
@@ -288,6 +291,15 @@ def _get_domain_mac_addresses(dom):
         mac = iface.find('./mac').get('address')
 
         yield {'mac': mac, 'network': network}
+
+
+def _get_domain_macs_by_network(dom):
+    netmacs = {}
+
+    for x in _get_domain_mac_addresses(dom):
+        netmacs.setdefault(x['network'], []).append(x['mac'])
+
+    return netmacs
 
 
 def _get_pool_path(pool):
