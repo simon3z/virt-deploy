@@ -1,0 +1,3 @@
+include tox.ini
+include virt-deploy.spec
+include COPYING

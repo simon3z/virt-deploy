@@ -99,7 +99,7 @@ COMMAND_TABLE = {
 def parse_command_line(cmdline):
     parser = argparse.ArgumentParser()
 
-    version = pkg_resources.get_distribution('virtdeploy').version
+    version = pkg_resources.get_distribution('virt-deploy').version
     parser.add_argument('-v', '--version', action='version',
                         version='%(prog)s {0}'.format(version))
 

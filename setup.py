@@ -23,7 +23,11 @@ from setuptools import setup
 
 
 setup(
-    name="virtdeploy",
+    name='virt-deploy',
+    description='Standardized deployment of virtual machines',
+    author='Federico Simoncelli',
+    author_email='fsimonce@redhat.com',
+    url='https://github.com/simon3z/virt-deploy',
     version='0.1.5',
     packages=find_packages(),
     entry_points={
