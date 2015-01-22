@@ -67,7 +67,14 @@ _IMAGE_OS_TABLE = {
 
 class VirtDeployLibvirtDriver(VirtDeployDriverBase):
     def __init__(self, uri='qemu:///system'):
-        self.uri = uri
+        self._uri = uri
+
+    def _libvirt_open(self):
+        def libvirt_callback(ctx, err):
+            pass  # add logging only when required
+
+        libvirt.registerErrorHandler(libvirt_callback, ctx=None)
+        return libvirt.open(self._uri)
 
     def template_list(self):
         templates = _get_virt_templates()
@@ -84,7 +91,7 @@ class VirtDeployLibvirtDriver(VirtDeployDriverBase):
         name = '{0}-{1}-{2}'.format(vmid, template, kwargs['arch'])
         image = '{0}.qcow2'.format(name)
 
-        conn = _libvirt_open(self.uri)
+        conn = self._libvirt_open()
         pool = conn.storagePoolLookupByName(kwargs['pool'])
         net = conn.networkLookupByName(kwargs['network'])
 
@@ -133,7 +140,7 @@ class VirtDeployLibvirtDriver(VirtDeployDriverBase):
 
         execute(('virt-install',
                  '--quiet',
-                 '--connect={0}'.format(self.uri),
+                 '--connect={0}'.format(self._uri),
                  '--name', name,
                  '--cpu', 'host-model-only,+vmx',
                  '--vcpus', str(kwargs['cpus']),
@@ -164,7 +171,7 @@ class VirtDeployLibvirtDriver(VirtDeployDriverBase):
         }
 
     def instance_address(self, vmid, network=None):
-        conn = _libvirt_open(self.uri)
+        conn = self._libvirt_open()
         dom = _get_domain(conn, vmid)
 
         netmacs = _get_domain_macs_by_network(dom)
@@ -184,7 +191,7 @@ class VirtDeployLibvirtDriver(VirtDeployDriverBase):
         return addresses
 
     def instance_start(self, vmid):
-        dom = _get_domain(_libvirt_open(self.uri), vmid)
+        dom = _get_domain(self._libvirt_open(), vmid)
 
         try:
             dom.create()
@@ -193,7 +200,7 @@ class VirtDeployLibvirtDriver(VirtDeployDriverBase):
                 raise
 
     def instance_stop(self, vmid):
-        dom = _get_domain(_libvirt_open(self.uri), vmid)
+        dom = _get_domain(self._libvirt_open(), vmid)
 
         try:
             dom.shutdownFlags(
@@ -205,7 +212,7 @@ class VirtDeployLibvirtDriver(VirtDeployDriverBase):
                 raise
 
     def instance_delete(self, vmid):
-        conn = _libvirt_open(self.uri)
+        conn = self._libvirt_open()
         dom = _get_domain(conn, vmid)
 
         try:
@@ -230,14 +237,6 @@ class VirtDeployLibvirtDriver(VirtDeployDriverBase):
                     _del_network_dhcp_host(net, x['ip'])
 
         dom.undefine()
-
-
-def _libvirt_open(uri=None):
-    def libvirt_callback(ctx, err):
-        pass  # add logging only when required
-
-    libvirt.registerErrorHandler(libvirt_callback, ctx=None)
-    return libvirt.open(uri)
 
 
 def _get_image_os(image):
