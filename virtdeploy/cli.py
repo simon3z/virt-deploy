@@ -31,6 +31,10 @@ import virtdeploy.errors
 
 DRIVER = 'libvirt'
 
+EXITCODE_SUCCESS = 0
+EXITCODE_FAILURE = 1
+EXITCODE_KEYBINT = 130
+
 
 def instance_create(args):
     driver = virtdeploy.get_driver(DRIVER)
@@ -135,6 +139,6 @@ def main():
         return parse_command_line(sys.argv[1:])
     except virtdeploy.errors.VirtDeployException as e:
         print('error: {0}'.format(e), file=sys.stderr)
-        raise SystemExit(1)
+        raise SystemExit(EXITCODE_FAILURE)
     except KeyboardInterrupt:
-        raise SystemExit(130)
+        raise SystemExit(EXITCODE_KEYBINT)
