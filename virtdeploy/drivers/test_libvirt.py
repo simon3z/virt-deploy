@@ -51,7 +51,7 @@ libvirt_mock.libvirtError = libvirtErrorMock
 _driver = None
 
 
-def driver():
+def module_mock():
     global _driver
 
     if _driver is None:
@@ -78,7 +78,7 @@ class TestImageOS(unittest.TestCase):
         )
 
         for image, os in image_oses:
-            assert os == driver()._get_image_os(image)
+            assert os == module_mock()._get_image_os(image)
 
 
 class TestNetwork(unittest.TestCase):
@@ -103,7 +103,7 @@ class TestNetwork(unittest.TestCase):
     def test_network_name(self):
         net = XMLDescMock(self.NETXML_DOMAIN)
 
-        name = driver()._get_network_domainname(net)
+        name = module_mock()._get_network_domainname(net)
 
         net.XMLDesc.assert_called_with()
         assert name == 'mydomain.example.com'
@@ -111,7 +111,7 @@ class TestNetwork(unittest.TestCase):
     def test_network_name_empty(self):
         net = XMLDescMock(self.NETXML_DOMAIN_EMPTY)
 
-        name = driver()._get_network_domainname(net)
+        name = module_mock()._get_network_domainname(net)
 
         net.XMLDesc.assert_called_with()
         assert name is None
@@ -119,7 +119,7 @@ class TestNetwork(unittest.TestCase):
     def test_network_name_missing(self):
         net = XMLDescMock(self.NETXML_DOMAIN_MISSING)
 
-        name = driver()._get_network_domainname(net)
+        name = module_mock()._get_network_domainname(net)
 
         net.XMLDesc.assert_called_with()
         assert name is None
@@ -145,7 +145,7 @@ class TestStorage(unittest.TestCase):
     def test_pool_path_dir(self):
         pool = XMLDescMock(self.POOLXML_PATH_DIR)
 
-        path = driver()._get_pool_path(pool)
+        path = module_mock()._get_pool_path(pool)
 
         pool.XMLDesc.assert_called_with()
         assert path == '/var/lib/libvirt/images'
@@ -154,7 +154,7 @@ class TestStorage(unittest.TestCase):
         pool = XMLDescMock(self.POOLXML_PATH_ISCSI)
 
         with self.assertRaises(OSError) as cm:
-            driver()._get_pool_path(pool)
+            module_mock()._get_pool_path(pool)
 
         assert cm.exception.errno == errno.ENOENT
 
@@ -193,7 +193,7 @@ class TestDomain(unittest.TestCase):
     def test_get_domain_one_mac_addresses(self):
         domain = XMLDescMock(self.DOMXML_ONE_MACADDR)
 
-        macs = list(driver()._get_domain_mac_addresses(domain))
+        macs = list(module_mock()._get_domain_mac_addresses(domain))
 
         domain.XMLDesc.assert_called_with()
         assert macs == [
@@ -203,7 +203,7 @@ class TestDomain(unittest.TestCase):
     def test_get_domain_multi_mac_addresses(self):
         domain = XMLDescMock(self.DOMXML_MULTI_MACADDR)
 
-        macs = list(driver()._get_domain_mac_addresses(domain))
+        macs = list(module_mock()._get_domain_mac_addresses(domain))
 
         domain.XMLDesc.assert_called_with()
         assert macs == [
@@ -270,7 +270,7 @@ class TestNetworkDhcpHosts(unittest.TestCase):
     def test_dhcp_hosts(self):
         net = XMLDescMock(self.NETXML_DHCP)
 
-        hosts = list(driver()._get_network_dhcp_hosts(net))
+        hosts = list(module_mock()._get_network_dhcp_hosts(net))
 
         net.XMLDesc.assert_called_with()
         assert hosts == self.NETXML_DHCP_EXPECTED
@@ -278,7 +278,7 @@ class TestNetworkDhcpHosts(unittest.TestCase):
     def test_dhcp_hosts_empty(self):
         net = XMLDescMock(self.NETXML_DHCP_EMPTY)
 
-        hosts = list(driver()._get_network_dhcp_hosts(net))
+        hosts = list(module_mock()._get_network_dhcp_hosts(net))
 
         net.XMLDesc.assert_called_with()
         assert hosts == list()
@@ -286,7 +286,7 @@ class TestNetworkDhcpHosts(unittest.TestCase):
     def test_dhcp_hosts_missing(self):
         net = XMLDescMock(self.NETXML_DHCP_MISSING)
 
-        hosts = list(driver()._get_network_dhcp_hosts(net))
+        hosts = list(module_mock()._get_network_dhcp_hosts(net))
 
         net.XMLDesc.assert_called_with()
         assert hosts == list()
@@ -294,8 +294,8 @@ class TestNetworkDhcpHosts(unittest.TestCase):
     def test_add_dhcp_host(self):
         net = MagicMock()
 
-        driver()._add_network_dhcp_host(net, 'test01', '52:54:00:a1:b2:01',
-                                        '192.168.122.2')
+        module_mock()._add_network_dhcp_host(
+            net, 'test01', '52:54:00:a1:b2:01', '192.168.122.2')
 
         expected_xml = ('<host mac="52:54:00:a1:b2:01" name="test01" '
                         'ip="192.168.122.2"/>')
@@ -304,7 +304,7 @@ class TestNetworkDhcpHosts(unittest.TestCase):
     def test_del_dhcp_host(self):
         net = MagicMock()
 
-        driver()._del_network_dhcp_host(net, '192.168.122.2')
+        module_mock()._del_network_dhcp_host(net, '192.168.122.2')
 
         expected_xml = '<host ip="192.168.122.2"/>'
         net.update.assert_called_with(2, 4, 0, expected_xml.encode(), 3)
@@ -314,18 +314,18 @@ class TestNetworkDhcpHosts(unittest.TestCase):
         net.update.side_effect = libvirtErrorMock(1)
 
         with self.assertRaises(libvirtErrorMock):
-            driver()._del_network_dhcp_host(net, '192.168.122.2')
+            module_mock()._del_network_dhcp_host(net, '192.168.122.2')
 
     def test_del_dhcp_host_failure_caught(self):
         net = MagicMock()
         net.update.side_effect = libvirtErrorMock(55)
-        driver()._del_network_dhcp_host(net, '192.168.122.2')
+        module_mock()._del_network_dhcp_host(net, '192.168.122.2')
 
     def test_get_dhcp_leases(self):
         net = XMLDescMock(self.NETXML_DHCP)
         net.DHCPLeases.return_value = self.NETXML_LEASES
 
-        hosts = list(driver()._get_network_dhcp_leases(net))
+        hosts = list(module_mock()._get_network_dhcp_leases(net))
 
         net.DHCPLeases.assert_called_with()
         assert hosts == (self.NETXML_DHCP_EXPECTED +
@@ -335,7 +335,7 @@ class TestNetworkDhcpHosts(unittest.TestCase):
         net = XMLDescMock(self.NETXML_DHCP)
         net.DHCPLeases.return_value = self.NETXML_LEASES
 
-        ipaddress = driver()._new_network_ipaddress(net)
+        ipaddress = module_mock()._new_network_ipaddress(net)
 
         assert ipaddress == '192.168.122.8'
 
@@ -344,7 +344,7 @@ class TestNetworkDnsHosts(unittest.TestCase):
     def test_add_dns_host(self):
         net = MagicMock()
 
-        driver()._add_network_host(net, 'test01', '192.168.122.2')
+        module_mock()._add_network_host(net, 'test01', '192.168.122.2')
 
         expected_xml = ('<host ip="192.168.122.2">'
                         '<hostname>test01</hostname></host>')
@@ -353,7 +353,7 @@ class TestNetworkDnsHosts(unittest.TestCase):
     def test_del_dns_host(self):
         net = MagicMock()
 
-        driver()._del_network_host(net, '192.168.122.2')
+        module_mock()._del_network_host(net, '192.168.122.2')
 
         expected_xml = '<host ip="192.168.122.2"/>'
         net.update.assert_called_with(2, 10, 0, expected_xml.encode(), 3)
@@ -363,10 +363,10 @@ class TestNetworkDnsHosts(unittest.TestCase):
         net.update.side_effect = libvirtErrorMock(1)
 
         with self.assertRaises(libvirtErrorMock):
-            driver()._del_network_host(net, '192.168.122.2')
+            module_mock()._del_network_host(net, '192.168.122.2')
 
     def test_del_dns_failure_caught(self):
         net = MagicMock()
         net.update.side_effect = libvirtErrorMock(55)
 
-        driver()._del_network_host(net, '192.168.122.2')
+        module_mock()._del_network_host(net, '192.168.122.2')
