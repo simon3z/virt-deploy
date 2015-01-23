@@ -27,6 +27,8 @@ import unittest
 from mock import MagicMock
 from mock import patch
 
+from ..errors import VirtDeployException
+
 libvirt_mock = types.ModuleType('libvirt')
 
 libvirt_mock.VIR_NETWORK_UPDATE_COMMAND_ADD_LAST = 3
@@ -370,3 +372,42 @@ class TestNetworkDnsHosts(unittest.TestCase):
         net.update.side_effect = libvirtErrorMock(55)
 
         module_mock()._del_network_host(net, '192.168.122.2')
+
+
+class TestVirtBuilderTemplates(unittest.TestCase):
+    VIRTBUILD_JSON = """\
+{
+  "version": 1,
+  "templates": [
+    { "os-version": "centos-6", "full-name": "CentOS 6.6" },
+    { "os-version": "centos-7.0", "full-name": "CentOS 7.0" }
+  ]
+}
+    """
+
+    VIRTBUILD_JSON_FUTURE = """\
+{
+    "version": 2
+}
+"""
+
+    def test_template_list(self):
+        driver = module_mock().VirtDeployLibvirtDriver()
+
+        with patch.object(module_mock(), 'execute') as execute_mock:
+            execute_mock.return_value = (self.VIRTBUILD_JSON, '')
+            templates = driver.template_list()
+
+        assert templates == [
+            {'id': 'centos-6', 'name': 'CentOS 6.6'},
+            {'id': 'centos-7.0', 'name': 'CentOS 7.0'},
+        ]
+
+    def test_template_list_unsupported(self):
+        driver = module_mock().VirtDeployLibvirtDriver()
+
+        with patch.object(module_mock(), 'execute') as execute_mock:
+            execute_mock.return_value = (self.VIRTBUILD_JSON_FUTURE, '')
+
+            with self.assertRaises(VirtDeployException):
+                driver.template_list()

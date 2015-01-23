@@ -31,6 +31,7 @@ from lxml import etree
 
 from ..driverbase import VirtDeployDriverBase
 from ..errors import InstanceNotFound
+from ..errors import VirtDeployException
 from ..utils import execute
 from ..utils import random_password
 
@@ -80,7 +81,7 @@ class VirtDeployLibvirtDriver(VirtDeployDriverBase):
         templates = _get_virt_templates()
 
         if templates['version'] != 1:
-            raise RuntimeError('Unsupported template list version')
+            raise VirtDeployException('Unsupported template list version')
 
         return [{'id': x['os-version'], 'name': x['full-name']}
                 for x in templates['templates']]
