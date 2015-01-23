@@ -27,12 +27,14 @@ import subprocess
 import sys
 
 import virtdeploy
-import virtdeploy.errors
+from virtdeploy import errors
+from virtdeploy import utils
 
 DRIVER = 'libvirt'
 
 EXITCODE_SUCCESS = 0
 EXITCODE_FAILURE = 1
+EXITCODE_TIMEOUT = 124
 EXITCODE_KEYBINT = 130
 
 
@@ -49,7 +51,14 @@ def instance_create(args):
 
 def instance_start(args):
     driver = virtdeploy.get_driver(DRIVER)
-    return driver.instance_start(args.name)
+    driver.instance_start(args.name)
+
+    if args.wait:
+        address_found = utils.wait_tcp_access(driver, args.name)
+        if address_found is None:
+            return EXITCODE_TIMEOUT
+
+    return EXITCODE_SUCCESS
 
 
 def instance_stop(args):
@@ -117,6 +126,8 @@ def parse_command_line(cmdline):
     cmd_create.add_argument('template', help='template id')
 
     cmd_start = cmd.add_parser('start', help='start an instance')
+    cmd_start.add_argument('--wait', action='store_true',
+                           help='wait for ssh access availability')
     cmd_start.add_argument('name', help='name of instance to start')
 
     cmd_stop = cmd.add_parser('stop', help='stop an instance')
@@ -141,7 +152,7 @@ def parse_command_line(cmdline):
 def main():
     try:
         return parse_command_line(sys.argv[1:])
-    except virtdeploy.errors.VirtDeployException as e:
+    except errors.VirtDeployException as e:
         print('error: {0}'.format(e), file=sys.stderr)
         raise SystemExit(EXITCODE_FAILURE)
     except KeyboardInterrupt:

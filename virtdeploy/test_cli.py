@@ -149,6 +149,30 @@ optional arguments:
         instance_start.assert_called_with('test01')
 
     @patch('virtdeploy.get_driver')
+    @patch('virtdeploy.utils.wait_tcp_access')
+    def test_instance_start_wait_success(self, wait_mock, driver_mock):
+        instance_start = driver_mock.return_value.instance_start
+        wait_mock.return_value = '192.168.122.2'
+
+        cli.parse_command_line(['start', '--wait', 'test01'])
+
+        driver_mock.assert_called_with('libvirt')
+        instance_start.assert_called_with('test01')
+        wait_mock.assert_called_with(driver_mock.return_value, 'test01')
+
+    @patch('virtdeploy.get_driver')
+    @patch('virtdeploy.utils.wait_tcp_access')
+    def test_instance_start_wait_fail(self, wait_mock, driver_mock):
+        instance_start = driver_mock.return_value.instance_start
+        wait_mock.return_value = None
+
+        cli.parse_command_line(['start', '--wait', 'test01'])
+
+        driver_mock.assert_called_with('libvirt')
+        instance_start.assert_called_with('test01')
+        wait_mock.assert_called_with(driver_mock.return_value, 'test01')
+
+    @patch('virtdeploy.get_driver')
     def test_instance_stop(self, driver_mock):
         instance_stop = driver_mock.return_value.instance_stop
 
