@@ -214,6 +214,17 @@ class TestDomain(unittest.TestCase):
             {'mac': '52:54:00:a0:b0:03', 'network': 'othernet1'},
         ]
 
+    def test_get_domain_macs_by_network(self):
+        domain = XMLDescMock(self.DOMXML_MULTI_MACADDR)
+
+        netmacs = module_mock()._get_domain_macs_by_network(domain)
+
+        domain.XMLDesc.assert_called_with()
+        assert netmacs == {
+            'default': ['52:54:00:a0:b0:01', '52:54:00:a0:b0:02'],
+            'othernet1': ['52:54:00:a0:b0:03'],
+        }
+
 
 class TestNetworkDhcpHosts(unittest.TestCase):
     NETXML_DHCP = """\
