@@ -66,9 +66,11 @@ class TestVirtDeployDriverBase(unittest.TestCase):
 
         for name, method in self._get_driver_methods():
             spec = inspect.getargspec(method)
+
             with self.assertRaises(NotImplementedError) as cm:
                 getattr(driver, name)(*(None,) * (len(spec.args) - 1))
-            assert cm.exception.args[0] == name
+
+            self.assertEqual(cm.exception.args[0], name)
 
     def test_drivers_interface(self):
         for driver_name in get_driver_names():
@@ -76,11 +78,11 @@ class TestVirtDeployDriverBase(unittest.TestCase):
 
             for name, method in self._get_driver_methods():
                 driver_method = getattr(driver, name)
-                assert driver_method != method
-                assert (inspect.getargspec(method) ==
-                        inspect.getargspec(driver_method))
+                self.assertNotEqual(driver_method, method)
+                self.assertEqual(inspect.getargspec(method),
+                                 inspect.getargspec(driver_method))
 
     def test_get_drivers(self):
         for driver_name in get_driver_names():
             driver = self._get_driver(driver_name)
-            assert isinstance(driver, VirtDeployDriverBase)
+            self.assertTrue(isinstance(driver, VirtDeployDriverBase))

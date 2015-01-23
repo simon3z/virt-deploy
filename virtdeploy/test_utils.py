@@ -31,7 +31,7 @@ from . import utils
 class TestRandomPassword(unittest.TestCase):
     def test_random_password(self):
         for size in range(6, 24):
-            assert len(utils.random_password(size=size)) == size
+            self.assertEqual(len(utils.random_password(size=size)), size)
 
 
 class TestExecute(unittest.TestCase):
@@ -43,7 +43,8 @@ class TestExecute(unittest.TestCase):
         with patch('subprocess.Popen') as popen_mock:
             popen_mock.return_value.communicate.return_value = outputs
             popen_mock.return_value.returncode = 0
-            assert utils.execute(command, **optargs) == outputs
+
+            self.assertEqual(utils.execute(command, **optargs), outputs)
 
         popen_mock.assert_called_once_with(command, **optargs)
 
@@ -55,6 +56,8 @@ class TestExecute(unittest.TestCase):
         with patch('subprocess.Popen') as popen_mock:
             popen_mock.return_value.communicate.return_value = outputs
             popen_mock.return_value.returncode = 1
+
             with self.assertRaises(CalledProcessError) as cm:
                 utils.execute(command, **optargs)
-            assert cm.exception.returncode == 1
+
+            self.assertEqual(cm.exception.returncode, 1)

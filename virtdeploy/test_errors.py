@@ -27,5 +27,5 @@ from . import errors
 
 class TestCommandLine(unittest.TestCase):
     def test_instance_not_found(self):
-        assert (str(errors.InstanceNotFound('test01')) ==
-                'No such instance: test01')
+        self.assertEqual(str(errors.InstanceNotFound('test01')),
+                         'No such instance: test01')

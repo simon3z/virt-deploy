@@ -80,7 +80,7 @@ class TestImageOS(unittest.TestCase):
         )
 
         for image, os in image_oses:
-            assert os == module_mock()._get_image_os(image)
+            self.assertEqual(os, module_mock()._get_image_os(image))
 
 
 class TestNetwork(unittest.TestCase):
@@ -108,7 +108,7 @@ class TestNetwork(unittest.TestCase):
         name = module_mock()._get_network_domainname(net)
 
         net.XMLDesc.assert_called_with()
-        assert name == 'mydomain.example.com'
+        self.assertEqual(name, 'mydomain.example.com')
 
     def test_network_name_empty(self):
         net = XMLDescMock(self.NETXML_DOMAIN_EMPTY)
@@ -116,7 +116,7 @@ class TestNetwork(unittest.TestCase):
         name = module_mock()._get_network_domainname(net)
 
         net.XMLDesc.assert_called_with()
-        assert name is None
+        self.assertIs(name, None)
 
     def test_network_name_missing(self):
         net = XMLDescMock(self.NETXML_DOMAIN_MISSING)
@@ -124,7 +124,7 @@ class TestNetwork(unittest.TestCase):
         name = module_mock()._get_network_domainname(net)
 
         net.XMLDesc.assert_called_with()
-        assert name is None
+        self.assertIs(name, None)
 
 
 class TestStorage(unittest.TestCase):
@@ -150,7 +150,7 @@ class TestStorage(unittest.TestCase):
         path = module_mock()._get_pool_path(pool)
 
         pool.XMLDesc.assert_called_with()
-        assert path == '/var/lib/libvirt/images'
+        self.assertEqual(path, '/var/lib/libvirt/images')
 
     def test_pool_path_iscsi(self):
         pool = XMLDescMock(self.POOLXML_PATH_ISCSI)
@@ -158,7 +158,7 @@ class TestStorage(unittest.TestCase):
         with self.assertRaises(OSError) as cm:
             module_mock()._get_pool_path(pool)
 
-        assert cm.exception.errno == errno.ENOENT
+        self.assertEqual(cm.exception.errno, errno.ENOENT)
 
 
 class TestDomain(unittest.TestCase):
@@ -198,9 +198,9 @@ class TestDomain(unittest.TestCase):
         macs = list(module_mock()._get_domain_mac_addresses(domain))
 
         domain.XMLDesc.assert_called_with()
-        assert macs == [
+        self.assertEqual(macs, [
             {'mac': '52:54:00:a0:b0:01', 'network': 'default'},
-        ]
+        ])
 
     def test_get_domain_multi_mac_addresses(self):
         domain = XMLDescMock(self.DOMXML_MULTI_MACADDR)
@@ -208,11 +208,11 @@ class TestDomain(unittest.TestCase):
         macs = list(module_mock()._get_domain_mac_addresses(domain))
 
         domain.XMLDesc.assert_called_with()
-        assert macs == [
+        self.assertEqual(macs, [
             {'mac': '52:54:00:a0:b0:01', 'network': 'default'},
             {'mac': '52:54:00:a0:b0:02', 'network': 'default'},
             {'mac': '52:54:00:a0:b0:03', 'network': 'othernet1'},
-        ]
+        ])
 
     def test_get_domain_macs_by_network(self):
         domain = XMLDescMock(self.DOMXML_MULTI_MACADDR)
@@ -220,10 +220,10 @@ class TestDomain(unittest.TestCase):
         netmacs = module_mock()._get_domain_macs_by_network(domain)
 
         domain.XMLDesc.assert_called_with()
-        assert netmacs == {
+        self.assertEqual(netmacs, {
             'default': ['52:54:00:a0:b0:01', '52:54:00:a0:b0:02'],
             'othernet1': ['52:54:00:a0:b0:03'],
-        }
+        })
 
 
 class TestNetworkDhcpHosts(unittest.TestCase):
@@ -286,7 +286,7 @@ class TestNetworkDhcpHosts(unittest.TestCase):
         hosts = list(module_mock()._get_network_dhcp_hosts(net))
 
         net.XMLDesc.assert_called_with()
-        assert hosts == self.NETXML_DHCP_EXPECTED
+        self.assertEqual(hosts, self.NETXML_DHCP_EXPECTED)
 
     def test_dhcp_hosts_empty(self):
         net = XMLDescMock(self.NETXML_DHCP_EMPTY)
@@ -294,7 +294,7 @@ class TestNetworkDhcpHosts(unittest.TestCase):
         hosts = list(module_mock()._get_network_dhcp_hosts(net))
 
         net.XMLDesc.assert_called_with()
-        assert hosts == list()
+        self.assertEqual(hosts, list())
 
     def test_dhcp_hosts_missing(self):
         net = XMLDescMock(self.NETXML_DHCP_MISSING)
@@ -302,7 +302,7 @@ class TestNetworkDhcpHosts(unittest.TestCase):
         hosts = list(module_mock()._get_network_dhcp_hosts(net))
 
         net.XMLDesc.assert_called_with()
-        assert hosts == list()
+        self.assertEqual(hosts, list())
 
     def test_add_dhcp_host(self):
         net = MagicMock()
@@ -341,8 +341,8 @@ class TestNetworkDhcpHosts(unittest.TestCase):
         hosts = list(module_mock()._get_network_dhcp_leases(net))
 
         net.DHCPLeases.assert_called_with()
-        assert hosts == (self.NETXML_DHCP_EXPECTED +
-                         self.NETXML_LEASES_EXPECTED)
+        self.assertEqual(hosts, (self.NETXML_DHCP_EXPECTED +
+                                 self.NETXML_LEASES_EXPECTED))
 
     def test_new_network_ipaddress(self):
         net = XMLDescMock(self.NETXML_DHCP)
@@ -350,7 +350,7 @@ class TestNetworkDhcpHosts(unittest.TestCase):
 
         ipaddress = module_mock()._new_network_ipaddress(net)
 
-        assert ipaddress == '192.168.122.8'
+        self.assertEqual(ipaddress, '192.168.122.8')
 
 
 class TestNetworkDnsHosts(unittest.TestCase):
@@ -409,10 +409,10 @@ class TestVirtBuilderTemplates(unittest.TestCase):
             execute_mock.return_value = (self.VIRTBUILD_JSON, '')
             templates = driver.template_list()
 
-        assert templates == [
+        self.assertEqual(templates, [
             {'id': 'centos-6', 'name': 'CentOS 6.6'},
             {'id': 'centos-7.0', 'name': 'CentOS 7.0'},
-        ]
+        ])
 
     def test_template_list_unsupported(self):
         driver = module_mock().VirtDeployLibvirtDriver()
