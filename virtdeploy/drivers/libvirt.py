@@ -180,16 +180,16 @@ class VirtDeployLibvirtDriver(VirtDeployDriverBase):
         if network:
             netmacs = {k: v for k, v in netmacs.iteritems()}
 
-        addresses = []
+        addresses = set()
 
         for name, macs in netmacs.iteritems():
             net = conn.networkLookupByName(name)
 
             for lease in _get_network_dhcp_leases(net):
                 if lease['mac'] in macs:
-                    addresses.append(lease['ip'])
+                    addresses.add(lease['ip'])
 
-        return addresses
+        return list(addresses)
 
     def instance_start(self, vmid):
         dom = _get_domain(self._libvirt_open(), vmid)
