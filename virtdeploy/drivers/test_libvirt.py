@@ -317,9 +317,9 @@ class TestNetworkDhcpHosts(unittest.TestCase):
     def test_del_dhcp_host(self):
         net = MagicMock()
 
-        module_mock()._del_network_dhcp_host(net, '192.168.122.2')
+        module_mock()._del_network_dhcp_host(net, 'test01')
 
-        expected_xml = '<host ip="192.168.122.2"/>'
+        expected_xml = '<host name="test01"/>'
         net.update.assert_called_with(2, 4, 0, expected_xml.encode(), 3)
 
     def test_del_dhcp_host_failure_raised(self):
@@ -366,9 +366,9 @@ class TestNetworkDnsHosts(unittest.TestCase):
     def test_del_dns_host(self):
         net = MagicMock()
 
-        module_mock()._del_network_host(net, '192.168.122.2')
+        module_mock()._del_network_host(net, 'test01')
 
-        expected_xml = '<host ip="192.168.122.2"/>'
+        expected_xml = '<host><hostname>test01</hostname></host>'
         net.update.assert_called_with(2, 10, 0, expected_xml.encode(), 3)
 
     def test_del_dns_failure_raised(self):

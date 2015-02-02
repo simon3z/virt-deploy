@@ -238,8 +238,8 @@ class VirtDeployLibvirtDriver(VirtDeployDriverBase):
 
             for x in _get_network_dhcp_hosts(net):
                 if x['mac'] in macs:
-                    _del_network_host(net, x['ip'])
-                    _del_network_dhcp_host(net, x['ip'])
+                    _del_network_host(net, x['name'])
+                    _del_network_dhcp_host(net, x['name'])
 
         dom.undefineFlags(libvirt.VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA)
 
@@ -328,14 +328,14 @@ def _add_network_host(net, hostname, ipaddress):
     etree.SubElement(xmlhost, 'hostname').text = hostname
 
     # Attempt to delete if present
-    _del_network_host(net, ipaddress)
+    _del_network_host(net, hostname)
     net.update(_NET_ADD_LAST, _NET_DNS_HOST, 0, etree.tostring(xmlhost),
                _NET_UPDATE_FLAGS)
 
 
-def _del_network_host(net, ipaddress):
+def _del_network_host(net, hostname):
     xmlhost = etree.Element('host')
-    xmlhost.set('ip', ipaddress)
+    etree.SubElement(xmlhost, 'hostname').text = hostname
 
     try:
         net.update(_NET_DELETE, _NET_DNS_HOST, 0, etree.tostring(xmlhost),
@@ -351,13 +351,15 @@ def _add_network_dhcp_host(net, hostname, mac, ipaddress):
     xmlhost.set('name', hostname)
     xmlhost.set('ip', ipaddress)
 
+    # Attempt to delete if present
+    _del_network_dhcp_host(net, hostname)
     net.update(_NET_ADD_LAST, _NET_DHCP_HOST, 0, etree.tostring(xmlhost),
                _NET_UPDATE_FLAGS)
 
 
-def _del_network_dhcp_host(net, ipaddress):
+def _del_network_dhcp_host(net, hostname):
     xmlhost = etree.Element('host')
-    xmlhost.set('ip', ipaddress)
+    xmlhost.set('name', hostname)
 
     try:
         net.update(_NET_DELETE, _NET_DHCP_HOST, 0, etree.tostring(xmlhost),
