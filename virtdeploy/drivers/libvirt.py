@@ -241,7 +241,7 @@ class VirtDeployLibvirtDriver(VirtDeployDriverBase):
                     _del_network_host(net, x['ip'])
                     _del_network_dhcp_host(net, x['ip'])
 
-        dom.undefine()
+        dom.undefineFlags(libvirt.VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA)
 
 
 def _get_image_os(image):
