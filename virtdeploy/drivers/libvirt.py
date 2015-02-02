@@ -225,7 +225,11 @@ class VirtDeployLibvirtDriver(VirtDeployDriverBase):
         xmldesc = etree.fromstring(dom.XMLDesc())
 
         for disk in xmldesc.iterfind('./devices/disk/source'):
-            os.remove(disk.get('file'))
+            try:
+                os.remove(disk.get('file'))
+            except OSError as e:
+                if e.errno != os.errno.ENOENT:
+                    raise
 
         netmacs = _get_domain_macs_by_network(dom)
 
