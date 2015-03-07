@@ -17,7 +17,7 @@ Requires:       python-setuptools
 Requires:       python-netaddr
 Requires:       libxml2-python
 Requires:       qemu-img
-Requires:       libguestfs-tools-c
+Requires:       libguestfs-tools-c >= 1.23.24
 Requires:       virt-install
 Requires:       libvirt-daemon-config-network
 Requires:       libvirt-daemon-config-nwfilter
