@@ -63,6 +63,7 @@ _NET_UPDATE_FLAGS = (
 _IMAGE_OS_TABLE = {
     'centos-6': 'centos6.5',  # TODO: fix versions
     'centos-7.0': 'centos7.0',
+    'centos-7.1': 'centos7.0',
 }
 
 
