@@ -48,6 +48,7 @@ INSTANCE_DEFAULTS = {
     'network': DEFAULT_NET,
     'pool': DEFAULT_POOL,
     'password': None,
+    'clone': True,
 }
 
 _NET_ADD_LAST = libvirt.VIR_NETWORK_UPDATE_COMMAND_ADD_LAST
@@ -96,19 +97,18 @@ class VirtDeployLibvirtDriver(VirtDeployDriverBase):
         pool = conn.storagePoolLookupByName(kwargs['pool'])
         net = conn.networkLookupByName(kwargs['network'])
 
-        repository = _get_pool_path(pool)
-        path = os.path.join(repository, image)
+        path = os.path.join(_get_pool_path(pool), image)
 
         if os.path.exists(path):
             raise OSError(os.errno.EEXIST, "Image already exists")
 
-        base = _create_base(template, kwargs['arch'], repository)
-
-        execute(('qemu-img', 'create', '-f', 'qcow2', '-b', base, image),
-                cwd=repository)
+        if kwargs['clone']:
+            # TODO: add ability to configure the size
+            _create_clone(path, template, kwargs['arch'], BASE_SIZE)
+        else:
+            _create_thinp(path, template, kwargs['arch'], BASE_SIZE)
 
         hostname = 'vm-{0}'.format(vmid)
-
         domainname = _get_network_domainname(net)
 
         if domainname is None:
@@ -251,22 +251,35 @@ def _get_image_os(image):
         return image.replace('-', '')
 
 
-def _create_base(template, arch, repository):
+def _create_clone(path, template, arch, size):
+    if os.path.exists(path):
+        raise OSError(os.errno.EEXIST, "Image already exists")
+
+    execute(('virt-builder', template,
+             '-o', path,
+             '--size', size,
+             '--format', BASE_FORMAT,
+             '--arch', arch,
+             '--root-password', 'locked:disabled'))
+
+
+def _create_thinp(path, template, arch, size):
+    image = os.path.basename(path)
+    repository = os.path.dirname(path)
+
     name = '_{0}-{1}.{2}'.format(template, arch, BASE_FORMAT)
     path = os.path.join(repository, name)
 
     if not os.path.exists(path):
-        execute(('virt-builder', template,
-                 '-o', path,
-                 '--size', BASE_SIZE,
-                 '--format', BASE_FORMAT,
-                 '--arch', arch,
-                 '--root-password', 'locked:disabled'))
+        _create_clone(path, template, arch, size, BASE_FORMAT)
 
         # As mentioned in the virt-builder man in section "CLONES" the
         # resulting image should be cleaned before bsing used as template.
         # TODO: handle half-backed templates
         execute(('virt-sysprep', '-a', path))
+
+    execute(('qemu-img', 'create', '-f', 'qcow2', '-b', name, image),
+            cwd=repository)
 
     return name
 
