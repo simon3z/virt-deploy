@@ -20,8 +20,9 @@
 
 from __future__ import absolute_import
 
+import sys
+import imp
 import errno
-import types
 import unittest
 
 from mock import MagicMock
@@ -29,39 +30,34 @@ from mock import patch
 
 from ..errors import VirtDeployException
 
-libvirt_mock = types.ModuleType('libvirt')
 
-libvirt_mock.VIR_NETWORK_UPDATE_COMMAND_ADD_LAST = 3
-libvirt_mock.VIR_NETWORK_UPDATE_COMMAND_DELETE = 2
-libvirt_mock.VIR_NETWORK_UPDATE_COMMAND_MODIFY = 1
-libvirt_mock.VIR_NETWORK_SECTION_DNS_HOST = 10
-libvirt_mock.VIR_NETWORK_SECTION_IP_DHCP_HOST = 4
-libvirt_mock.VIR_NETWORK_UPDATE_AFFECT_CONFIG = 2
-libvirt_mock.VIR_NETWORK_UPDATE_AFFECT_LIVE = 1
-libvirt_mock.VIR_ERR_OPERATION_INVALID = 55
+libvirt_module = imp.new_module("libvirt")
+libvirt_module_code = """
+VIR_ERR_OPERATION_INVALID = 55
+VIR_NETWORK_SECTION_DNS_HOST = 10
+VIR_NETWORK_SECTION_IP_DHCP_HOST = 4
+VIR_NETWORK_UPDATE_AFFECT_CONFIG = 2
+VIR_NETWORK_UPDATE_AFFECT_LIVE = 1
+VIR_NETWORK_UPDATE_COMMAND_ADD_LAST = 3
+VIR_NETWORK_UPDATE_COMMAND_DELETE = 2
+VIR_NETWORK_UPDATE_COMMAND_MODIFY = 1
 
-
-class libvirtErrorMock(Exception):
+class libvirtError(Exception):
     def __init__(self, code):
         self.code = code
 
     def get_error_code(self):
         return self.code
-
-libvirt_mock.libvirtError = libvirtErrorMock
-
-_driver = None
+"""
 
 
-def module_mock():
-    global _driver
+def get_libvirt_driver():
+    exec(libvirt_module_code, libvirt_module.__dict__)
+    sys.modules['libvirt'] = libvirt_module
+    return __import__('libvirt', globals(), locals(), ['.'], 1)
 
-    if _driver is None:
-        with patch.dict('sys.modules', {'libvirt': libvirt_mock}):
-            _driver = __import__('libvirt', globals(), locals(),
-                                 ['libvirt'], 1)
 
-    return _driver
+DRIVER = get_libvirt_driver()
 
 
 def XMLDescMock(xmldesc=None):
@@ -80,7 +76,7 @@ class TestImageOS(unittest.TestCase):
         )
 
         for image, os in image_oses:
-            self.assertEqual(os, module_mock()._get_image_os(image))
+            self.assertEqual(os, DRIVER._get_image_os(image))
 
 
 class TestNetwork(unittest.TestCase):
@@ -105,7 +101,7 @@ class TestNetwork(unittest.TestCase):
     def test_network_name(self):
         net = XMLDescMock(self.NETXML_DOMAIN)
 
-        name = module_mock()._get_network_domainname(net)
+        name = DRIVER._get_network_domainname(net)
 
         net.XMLDesc.assert_called_with()
         self.assertEqual(name, 'mydomain.example.com')
@@ -113,7 +109,7 @@ class TestNetwork(unittest.TestCase):
     def test_network_name_empty(self):
         net = XMLDescMock(self.NETXML_DOMAIN_EMPTY)
 
-        name = module_mock()._get_network_domainname(net)
+        name = DRIVER._get_network_domainname(net)
 
         net.XMLDesc.assert_called_with()
         self.assertIs(name, None)
@@ -121,7 +117,7 @@ class TestNetwork(unittest.TestCase):
     def test_network_name_missing(self):
         net = XMLDescMock(self.NETXML_DOMAIN_MISSING)
 
-        name = module_mock()._get_network_domainname(net)
+        name = DRIVER._get_network_domainname(net)
 
         net.XMLDesc.assert_called_with()
         self.assertIs(name, None)
@@ -147,7 +143,7 @@ class TestStorage(unittest.TestCase):
     def test_pool_path_dir(self):
         pool = XMLDescMock(self.POOLXML_PATH_DIR)
 
-        path = module_mock()._get_pool_path(pool)
+        path = DRIVER._get_pool_path(pool)
 
         pool.XMLDesc.assert_called_with()
         self.assertEqual(path, '/var/lib/libvirt/images')
@@ -156,7 +152,7 @@ class TestStorage(unittest.TestCase):
         pool = XMLDescMock(self.POOLXML_PATH_ISCSI)
 
         with self.assertRaises(OSError) as cm:
-            module_mock()._get_pool_path(pool)
+            DRIVER._get_pool_path(pool)
 
         self.assertEqual(cm.exception.errno, errno.ENOENT)
 
@@ -195,7 +191,7 @@ class TestDomain(unittest.TestCase):
     def test_get_domain_one_mac_addresses(self):
         domain = XMLDescMock(self.DOMXML_ONE_MACADDR)
 
-        macs = list(module_mock()._get_domain_mac_addresses(domain))
+        macs = list(DRIVER._get_domain_mac_addresses(domain))
 
         domain.XMLDesc.assert_called_with()
         self.assertEqual(macs, [
@@ -205,7 +201,7 @@ class TestDomain(unittest.TestCase):
     def test_get_domain_multi_mac_addresses(self):
         domain = XMLDescMock(self.DOMXML_MULTI_MACADDR)
 
-        macs = list(module_mock()._get_domain_mac_addresses(domain))
+        macs = list(DRIVER._get_domain_mac_addresses(domain))
 
         domain.XMLDesc.assert_called_with()
         self.assertEqual(macs, [
@@ -217,7 +213,7 @@ class TestDomain(unittest.TestCase):
     def test_get_domain_macs_by_network(self):
         domain = XMLDescMock(self.DOMXML_MULTI_MACADDR)
 
-        netmacs = module_mock()._get_domain_macs_by_network(domain)
+        netmacs = DRIVER._get_domain_macs_by_network(domain)
 
         domain.XMLDesc.assert_called_with()
         self.assertEqual(netmacs, {
@@ -283,7 +279,7 @@ class TestNetworkDhcpHosts(unittest.TestCase):
     def test_dhcp_hosts(self):
         net = XMLDescMock(self.NETXML_DHCP)
 
-        hosts = list(module_mock()._get_network_dhcp_hosts(net))
+        hosts = list(DRIVER._get_network_dhcp_hosts(net))
 
         net.XMLDesc.assert_called_with()
         self.assertEqual(hosts, self.NETXML_DHCP_EXPECTED)
@@ -291,7 +287,7 @@ class TestNetworkDhcpHosts(unittest.TestCase):
     def test_dhcp_hosts_empty(self):
         net = XMLDescMock(self.NETXML_DHCP_EMPTY)
 
-        hosts = list(module_mock()._get_network_dhcp_hosts(net))
+        hosts = list(DRIVER._get_network_dhcp_hosts(net))
 
         net.XMLDesc.assert_called_with()
         self.assertEqual(hosts, list())
@@ -299,7 +295,7 @@ class TestNetworkDhcpHosts(unittest.TestCase):
     def test_dhcp_hosts_missing(self):
         net = XMLDescMock(self.NETXML_DHCP_MISSING)
 
-        hosts = list(module_mock()._get_network_dhcp_hosts(net))
+        hosts = list(DRIVER._get_network_dhcp_hosts(net))
 
         net.XMLDesc.assert_called_with()
         self.assertEqual(hosts, list())
@@ -307,7 +303,7 @@ class TestNetworkDhcpHosts(unittest.TestCase):
     def test_add_dhcp_host(self):
         net = MagicMock()
 
-        module_mock()._add_network_dhcp_host(
+        DRIVER._add_network_dhcp_host(
             net, 'test01', '52:54:00:a1:b2:01', '192.168.122.2')
 
         expected_xml = ('<host mac="52:54:00:a1:b2:01" name="test01" '
@@ -317,28 +313,28 @@ class TestNetworkDhcpHosts(unittest.TestCase):
     def test_del_dhcp_host(self):
         net = MagicMock()
 
-        module_mock()._del_network_dhcp_host(net, 'test01')
+        DRIVER._del_network_dhcp_host(net, 'test01')
 
         expected_xml = '<host name="test01"/>'
         net.update.assert_called_with(2, 4, 0, expected_xml.encode(), 3)
 
     def test_del_dhcp_host_failure_raised(self):
         net = MagicMock()
-        net.update.side_effect = libvirtErrorMock(1)
+        net.update.side_effect = libvirt_module.libvirtError(1)
 
-        with self.assertRaises(libvirtErrorMock):
-            module_mock()._del_network_dhcp_host(net, '192.168.122.2')
+        with self.assertRaises(libvirt_module.libvirtError):
+            DRIVER._del_network_dhcp_host(net, '192.168.122.2')
 
     def test_del_dhcp_host_failure_caught(self):
         net = MagicMock()
-        net.update.side_effect = libvirtErrorMock(55)
-        module_mock()._del_network_dhcp_host(net, '192.168.122.2')
+        net.update.side_effect = libvirt_module.libvirtError(55)
+        DRIVER._del_network_dhcp_host(net, '192.168.122.2')
 
     def test_get_dhcp_leases(self):
         net = XMLDescMock(self.NETXML_DHCP)
         net.DHCPLeases.return_value = self.NETXML_LEASES
 
-        hosts = list(module_mock()._get_network_dhcp_leases(net))
+        hosts = list(DRIVER._get_network_dhcp_leases(net))
 
         net.DHCPLeases.assert_called_with()
         self.assertEqual(hosts, (self.NETXML_DHCP_EXPECTED +
@@ -348,7 +344,7 @@ class TestNetworkDhcpHosts(unittest.TestCase):
         net = XMLDescMock(self.NETXML_DHCP)
         net.DHCPLeases.return_value = self.NETXML_LEASES
 
-        ipaddress = module_mock()._new_network_ipaddress(net)
+        ipaddress = DRIVER._new_network_ipaddress(net)
 
         self.assertEqual(ipaddress, '192.168.122.8')
 
@@ -357,7 +353,7 @@ class TestNetworkDnsHosts(unittest.TestCase):
     def test_add_dns_host(self):
         net = MagicMock()
 
-        module_mock()._add_network_host(net, 'test01', '192.168.122.2')
+        DRIVER._add_network_host(net, 'test01', '192.168.122.2')
 
         expected_xml = ('<host ip="192.168.122.2">'
                         '<hostname>test01</hostname></host>')
@@ -366,23 +362,23 @@ class TestNetworkDnsHosts(unittest.TestCase):
     def test_del_dns_host(self):
         net = MagicMock()
 
-        module_mock()._del_network_host(net, 'test01')
+        DRIVER._del_network_host(net, 'test01')
 
         expected_xml = '<host><hostname>test01</hostname></host>'
         net.update.assert_called_with(2, 10, 0, expected_xml.encode(), 3)
 
     def test_del_dns_failure_raised(self):
         net = MagicMock()
-        net.update.side_effect = libvirtErrorMock(1)
+        net.update.side_effect = libvirt_module.libvirtError(1)
 
-        with self.assertRaises(libvirtErrorMock):
-            module_mock()._del_network_host(net, '192.168.122.2')
+        with self.assertRaises(libvirt_module.libvirtError):
+            DRIVER._del_network_host(net, '192.168.122.2')
 
     def test_del_dns_failure_caught(self):
         net = MagicMock()
-        net.update.side_effect = libvirtErrorMock(55)
+        net.update.side_effect = libvirt_module.libvirtError(55)
 
-        module_mock()._del_network_host(net, '192.168.122.2')
+        DRIVER._del_network_host(net, '192.168.122.2')
 
 
 class TestVirtBuilderTemplates(unittest.TestCase):
@@ -403,9 +399,9 @@ class TestVirtBuilderTemplates(unittest.TestCase):
 """
 
     def test_template_list(self):
-        driver = module_mock().VirtDeployLibvirtDriver()
+        driver = DRIVER.VirtDeployLibvirtDriver()
 
-        with patch.object(module_mock(), 'execute') as execute_mock:
+        with patch.object(DRIVER, 'execute') as execute_mock:
             execute_mock.return_value = (self.VIRTBUILD_JSON, '')
             templates = driver.template_list()
 
@@ -415,9 +411,9 @@ class TestVirtBuilderTemplates(unittest.TestCase):
         ])
 
     def test_template_list_unsupported(self):
-        driver = module_mock().VirtDeployLibvirtDriver()
+        driver = DRIVER.VirtDeployLibvirtDriver()
 
-        with patch.object(module_mock(), 'execute') as execute_mock:
+        with patch.object(DRIVER, 'execute') as execute_mock:
             execute_mock.return_value = (self.VIRTBUILD_JSON_FUTURE, '')
 
             with self.assertRaises(VirtDeployException):
