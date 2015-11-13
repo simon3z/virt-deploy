@@ -29,17 +29,6 @@ from mock import patch
 
 from ..errors import VirtDeployException
 
-libvirt_mock = types.ModuleType('libvirt')
-
-libvirt_mock.VIR_NETWORK_UPDATE_COMMAND_ADD_LAST = 3
-libvirt_mock.VIR_NETWORK_UPDATE_COMMAND_DELETE = 2
-libvirt_mock.VIR_NETWORK_UPDATE_COMMAND_MODIFY = 1
-libvirt_mock.VIR_NETWORK_SECTION_DNS_HOST = 10
-libvirt_mock.VIR_NETWORK_SECTION_IP_DHCP_HOST = 4
-libvirt_mock.VIR_NETWORK_UPDATE_AFFECT_CONFIG = 2
-libvirt_mock.VIR_NETWORK_UPDATE_AFFECT_LIVE = 1
-libvirt_mock.VIR_ERR_OPERATION_INVALID = 55
-
 
 class libvirtErrorMock(Exception):
     def __init__(self, code):
@@ -48,8 +37,21 @@ class libvirtErrorMock(Exception):
     def get_error_code(self):
         return self.code
 
-libvirt_mock.libvirtError = libvirtErrorMock
 
+class LibvirtMock(types.ModuleType, object):
+    VIR_NETWORK_UPDATE_COMMAND_ADD_LAST = 3
+    VIR_NETWORK_UPDATE_COMMAND_DELETE = 2
+    VIR_NETWORK_UPDATE_COMMAND_MODIFY = 1
+    VIR_NETWORK_SECTION_DNS_HOST = 10
+    VIR_NETWORK_SECTION_IP_DHCP_HOST = 4
+    VIR_NETWORK_UPDATE_AFFECT_CONFIG = 2
+    VIR_NETWORK_UPDATE_AFFECT_LIVE = 1
+    VIR_ERR_OPERATION_INVALID = 55
+
+    libvirtError = libvirtErrorMock
+
+
+libvirt_mock = LibvirtMock('libvirt')
 _driver = None
 
 
