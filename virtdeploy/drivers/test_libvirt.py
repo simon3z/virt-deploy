@@ -75,10 +75,11 @@ class TestImageOS(unittest.TestCase):
         image_oses = (
             ('centos-6', 'centos6.5'),
             ('centos-7.0', 'centos7.0'),
-            ('fedora-18', 'fedora18'),
-            ('fedora-19', 'fedora19'),
+            ('centos-7.1', 'centos7.0'),
             ('fedora-20', 'fedora20'),
             ('fedora-21', 'fedora21'),
+            ('fedora-22', 'fedora22'),
+            ('fedora-23', 'fedora23'),
         )
 
         for image, os in image_oses:
