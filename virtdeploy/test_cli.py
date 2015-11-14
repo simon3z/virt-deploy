@@ -64,9 +64,10 @@ optional arguments:
         self.assertEqual(stdout_mock.getvalue(), self.HELP_OUTPUT)
 
     def test_main_success(self):
-        with patch('virtdeploy.cli.parse_command_line') as func_mock:
-            cli.main()
-            func_mock.assert_call()
+        with patch.object(sys, 'argv', []):
+            with patch('virtdeploy.cli.parse_command_line') as func_mock:
+                cli.main()
+                func_mock.assert_called_once_with([])
 
     @patch('sys.stderr')
     def test_main_failure(self, stderr_mock):
