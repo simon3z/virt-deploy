@@ -25,28 +25,13 @@ import inspect
 import unittest
 
 from mock import patch
-from mock import MagicMock
 
 from . import get_driver
 from . import get_driver_class
 from . import get_driver_names
 
 from .driverbase import VirtDeployDriverBase
-
-
-if sys.version_info[0] == 3:  # pragma: no cover
-    builtin_import = 'builtins.__import__'
-else:  # pragma: no cover
-    builtin_import = '__builtin__.__import__'
-
-
-def try_import(spec):
-    def fake_import(name, globals={}, locals={}, fromlist=[], level=0):
-        try:
-            return spec(name, globals, locals, fromlist, level)
-        except ImportError:
-            return MagicMock()
-    return fake_import
+from .drivers import test_libvirt
 
 
 class TestVirtDeployDriverBase(unittest.TestCase):
@@ -54,11 +39,11 @@ class TestVirtDeployDriverBase(unittest.TestCase):
         return inspect.getmembers(VirtDeployDriverBase, inspect.ismethod)
 
     def _get_driver_class(self, name):
-        with patch(builtin_import, spec=True, new_callable=try_import):
+        with patch.dict(sys.modules, {'libvirt': test_libvirt.libvirt_mock}):
             return get_driver_class(name)
 
     def _get_driver(self, name):
-        with patch(builtin_import, spec=True, new_callable=try_import):
+        with patch.dict(sys.modules, {'libvirt': test_libvirt.libvirt_mock}):
             return get_driver(name)
 
     def test_base_not_implemented(self):
