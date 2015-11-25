@@ -15,6 +15,7 @@ BuildRequires:  python-setuptools
 
 Requires:       python-setuptools
 Requires:       python-netaddr
+Requires:       python-lxml
 Requires:       libxml2-python
 Requires:       qemu-img
 Requires:       libguestfs-tools-c >= 1.23.24
