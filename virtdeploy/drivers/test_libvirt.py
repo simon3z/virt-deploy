@@ -76,6 +76,7 @@ class TestImageOS(unittest.TestCase):
             ('centos-6', 'centos6.5'),
             ('centos-7.0', 'centos7.0'),
             ('centos-7.1', 'centos7.0'),
+            ('centos-7.2', 'centos7.0'),
             ('fedora-20', 'fedora20'),
             ('fedora-21', 'fedora21'),
             ('fedora-22', 'fedora22'),
