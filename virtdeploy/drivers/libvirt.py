@@ -64,6 +64,8 @@ _IMAGE_OS_TABLE = {
     'centos-6': 'centos6.5',  # TODO: fix versions
     'centos-7.1': 'centos7.0',  # TODO: fix versions
     'centos-7.2': 'centos7.0',  # TODO: fix versions
+    'rhel-6.7': 'rhel6',  # TODO: fix versions
+    'rhel-7.2': 'rhel7',  # TODO: fix versions
 }
 
 
