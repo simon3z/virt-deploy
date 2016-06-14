@@ -28,7 +28,7 @@ setup(
     author='Federico Simoncelli',
     author_email='fsimonce@redhat.com',
     url='https://github.com/simon3z/virt-deploy',
-    version='0.1.7',
+    version='0.1.8',
     packages=find_packages(),
     entry_points={
         'console_scripts': [
