@@ -1,16 +1,13 @@
 %{!?python_sitelib: %global python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
 
-%global commit        333b47ebdb73d8a47ad022c9b956724fc09d7de9
-%global shortcommit   %(c=%{commit}; echo ${c:0:7})
-
 Name:           virt-deploy
 Version:        0.1.7
-Release:        2.git%{shortcommit}%{?dist}
+Release:        1%{?dist}
 Summary:        Virtual machines deployment tool
 
 License:        GPLv2
 URL:            https://github.com/simon3z/%{name}
-Source0:        https://github.com/simon3z/%{name}/archive/%{commit}/%{name}-%{version}.g%{shortcommit}.tar.gz
+Source0:        https://github.com/simon3z/%{name}/archive/%{version}/%{name}-%{version}.tar.gz
 
 BuildArch:      noarch
 BuildRequires:  python-devel
@@ -32,7 +29,7 @@ Virtual machines deployment tool.
 
 
 %prep
-%setup -qn %{name}-%{commit}
+%setup -q
 
 
 %build
