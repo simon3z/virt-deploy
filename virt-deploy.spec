@@ -1,7 +1,7 @@
 %{!?python_sitelib: %global python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print(get_python_lib())")}
 
 Name:           virt-deploy
-Version:        0.1.8
+Version:        0.1.9
 Release:        1%{?dist}
 Summary:        Virtual machines deployment tool
 
@@ -48,6 +48,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Tue Jan 31 2017 Federico Simoncelli <fsimonce@redhat.com> 0.1.9-1
+- libvirt: automate support for centos 7.x (fsimonce@redhat.com)
+
 * Wed Jun 15 2016 Federico Simoncelli <fsimonce@redhat.com> 0.1.8-1
 - new package built with tito
 
