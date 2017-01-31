@@ -61,11 +61,7 @@ _NET_UPDATE_FLAGS = (
 )
 
 _IMAGE_OS_TABLE = {
-    'centos-6': 'centos6.5',  # TODO: fix versions
-    'centos-7.1': 'centos7.0',  # TODO: fix versions
-    'centos-7.2': 'centos7.0',  # TODO: fix versions
-    'rhel-6.7': 'rhel6',  # TODO: fix versions
-    'rhel-7.2': 'rhel7',  # TODO: fix versions
+    'centos-6': 'centos6.6',  # TODO: fix versions
 }
 
 
@@ -248,6 +244,8 @@ class VirtDeployLibvirtDriver(VirtDeployDriverBase):
 
 
 def _get_image_os(image):
+    if image.startswith('centos-7'):
+        return 'centos7.0'
     try:
         return _IMAGE_OS_TABLE[image]
     except KeyError:
